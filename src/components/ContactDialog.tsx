@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { LinkedinIcon, Save } from "lucide-react";
+import { LinkedinIcon, Save, ArrowUpDown } from "lucide-react";
 
 interface ContactDialogProps {
   isOpen: boolean;
@@ -39,7 +38,9 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
     category: '',
     howToUse: '',
     priority: 'Medium',
-    linkedinUrl: ''
+    linkedinUrl: '',
+    rank: 50,
+    notes: ''
   });
 
   React.useEffect(() => {
@@ -47,7 +48,8 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
       setFormData({
         ...formData,
         ...initialData,
-        // Ensure linkedinUrl exists even if it wasn't in the original data
+        rank: initialData.rank || 50,
+        notes: initialData.notes || '',
         linkedinUrl: initialData.linkedinUrl || ''
       });
     }
@@ -134,45 +136,67 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-purple-700">LinkedIn URL</label>
-            <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-purple-700">Rank (0-100)</label>
               <Input
-                value={formData.linkedinUrl}
-                onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
+                type="number"
+                min="0"
+                max="100"
+                value={formData.rank}
+                onChange={(e) => setFormData({ ...formData, rank: parseInt(e.target.value) || 0 })}
                 className="border-purple-200 focus:border-purple-400"
-                placeholder="https://linkedin.com/in/username"
               />
-              {formData.linkedinUrl && (
-                <a
-                  href={formData.linkedinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center p-2 bg-[#0077b5] text-white rounded-md hover:bg-[#006097] transition-colors"
-                >
-                  <LinkedinIcon className="w-5 h-5" />
-                </a>
-              )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-purple-700">LinkedIn URL</label>
+              <div className="flex gap-2">
+                <Input
+                  value={formData.linkedinUrl}
+                  onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
+                  className="border-purple-200 focus:border-purple-400"
+                  placeholder="https://linkedin.com/in/username"
+                />
+                {formData.linkedinUrl && (
+                  <a
+                    href={formData.linkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center p-2 bg-[#0077b5] text-white rounded-md hover:bg-[#006097] transition-colors"
+                  >
+                    <LinkedinIcon className="w-5 h-5" />
+                  </a>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-purple-700">Tips</label>
-              <Textarea
-                value={formData.tips}
-                onChange={(e) => setFormData({ ...formData, tips: e.target.value })}
-                className="border-purple-200 focus:border-purple-400 h-20"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-purple-700">Comments</label>
-              <Textarea
-                value={formData.comments}
-                onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
-                className="border-purple-200 focus:border-purple-400 h-20"
-              />
-            </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-purple-700">Tips</label>
+            <Textarea
+              value={formData.tips}
+              onChange={(e) => setFormData({ ...formData, tips: e.target.value })}
+              className="border-purple-200 focus:border-purple-400 h-20"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-purple-700">Comments</label>
+            <Textarea
+              value={formData.comments}
+              onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+              className="border-purple-200 focus:border-purple-400 h-20"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-purple-700">Personal Notes</label>
+            <Textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="border-purple-200 focus:border-purple-400 h-20"
+              placeholder="Add your personal notes about this contact..."
+            />
           </div>
 
           <div className="space-y-1">

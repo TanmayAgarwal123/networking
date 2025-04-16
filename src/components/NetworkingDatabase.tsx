@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import * as XLSX from 'xlsx';
@@ -289,7 +288,11 @@ const NetworkingDatabase = () => {
       priority: "High",
       linkedinUrl: "https://www.linkedin.com/in/rashmi-chelliah/"
     }
-  ]);
+  ].map(contact => ({
+    ...contact,
+    rank: contact.rank || 50,
+    notes: contact.notes || ''
+  })));
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
@@ -340,7 +343,38 @@ const NetworkingDatabase = () => {
     }
   };
 
+  const handleMoveUp = (sno: number) => {
+    const index = contacts.findIndex(c => c.sno === sno);
+    if (index > 0) {
+      const newContacts = [...contacts];
+      const currentRank = newContacts[index].rank;
+      const prevRank = newContacts[index - 1].rank;
+      newContacts[index].rank = prevRank;
+      newContacts[index - 1].rank = currentRank;
+      setContacts(newContacts);
+      toast.success("Contact moved up successfully!");
+    }
+  };
+
+  const handleMoveDown = (sno: number) => {
+    const index = contacts.findIndex(c => c.sno === sno);
+    if (index < contacts.length - 1) {
+      const newContacts = [...contacts];
+      const currentRank = newContacts[index].rank;
+      const nextRank = newContacts[index + 1].rank;
+      newContacts[index].rank = nextRank;
+      newContacts[index + 1].rank = currentRank;
+      setContacts(newContacts);
+      toast.success("Contact moved down successfully!");
+    }
+  };
+
   const sortedContacts = [...contacts].sort((a, b) => {
+    // First sort by rank (descending)
+    const rankDiff = b.rank - a.rank;
+    if (rankDiff !== 0) return rankDiff;
+    
+    // Then by priority if ranks are equal
     const priorityOrder = { "High": 1, "Medium": 2, "Low": 3 };
     return priorityOrder[a.priority] - priorityOrder[b.priority];
   });
@@ -388,6 +422,8 @@ const NetworkingDatabase = () => {
               <th className="px-6 py-4 text-left text-purple-800 font-semibold">Category</th>
               <th className="px-6 py-4 text-left text-purple-800 font-semibold">Priority</th>
               <th className="px-6 py-4 text-left text-purple-800 font-semibold">Contact</th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Rank</th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Notes</th>
               <th className="px-6 py-4 text-left text-purple-800 font-semibold">Actions</th>
             </tr>
           </thead>
@@ -428,6 +464,16 @@ const NetworkingDatabase = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4">{contact.contact}</td>
+                <td className="px-6 py-4">{contact.rank}</td>
+                <td className="px-6 py-4">
+                  {contact.notes ? (
+                    <div className="max-w-xs overflow-hidden text-ellipsis">
+                      {contact.notes}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">No notes</span>
+                  )}
+                </td>
                 <td className="px-6 py-4">
                   <div className="flex gap-2">
                     <Button
