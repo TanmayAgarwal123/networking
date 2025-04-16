@@ -1,11 +1,12 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import * as XLSX from 'xlsx';
 import { toast } from "sonner";
+import { Download, Edit, Trash2, LinkedinIcon, Plus, ArrowUpDown } from "lucide-react";
+import ContactDialog from './ContactDialog';
 
 const NetworkingDatabase = () => {
-  const contacts = [
+  const [contacts, setContacts] = useState([
     // Career Services & University Staff
     {
       sno: 1,
@@ -267,28 +268,21 @@ const NetworkingDatabase = () => {
       howToUse: "Connect about ML curriculum",
       priority: "High"
     }
-  ];
+  ]);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState(null);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
 
   const downloadExcel = () => {
     try {
-      // Create worksheet with all contact data
       const worksheet = XLSX.utils.json_to_sheet(contacts);
-      
-      // Create a new workbook
       const workbook = XLSX.utils.book_new();
-      
-      // Add the worksheet to the workbook
       XLSX.utils.book_append_sheet(workbook, worksheet, "Networking");
-      
-      // Set column widths for better readability
       const maxWidth = 30;
       const colWidths = Object.keys(contacts[0]).map(() => ({ wch: maxWidth }));
       worksheet['!cols'] = colWidths;
-      
-      // Generate and download Excel file
       XLSX.writeFile(workbook, "Columbia_Networking_Database.xlsx");
-      
-      // Show success notification
       toast.success("Excel file downloaded successfully!");
     } catch (error) {
       console.error("Excel download error:", error);
@@ -296,69 +290,156 @@ const NetworkingDatabase = () => {
     }
   };
 
-  // Sort contacts by priority
+  const handleEdit = (contact: any) => {
+    setEditingContact(contact);
+    setDialogMode('edit');
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (sno: number) => {
+    const newContacts = contacts.filter(c => c.sno !== sno);
+    setContacts(newContacts);
+    toast.success("Contact deleted successfully!");
+  };
+
+  const handleCreateNew = () => {
+    setEditingContact(null);
+    setDialogMode('create');
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveContact = (contact: any) => {
+    if (dialogMode === 'create') {
+      setContacts([...contacts, contact]);
+      toast.success("New contact added successfully!");
+    } else {
+      const newContacts = contacts.map(c => c.sno === contact.sno ? contact : c);
+      setContacts(newContacts);
+      toast.success("Contact updated successfully!");
+    }
+  };
+
   const sortedContacts = [...contacts].sort((a, b) => {
     const priorityOrder = { "High": 1, "Medium": 2, "Low": 3 };
     return priorityOrder[a.priority] - priorityOrder[b.priority];
   });
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex flex-col items-center mb-8">
-        <h1 className="text-4xl font-bold mb-4 text-purple-800">Columbia Networking Database</h1>
+    <div className="container mx-auto py-8 px-4 min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
+      <div className="flex flex-col items-center mb-8 animate-fade-in">
+        <h1 className="text-4xl font-bold mb-4 text-purple-800 tracking-tight">
+          Columbia Networking Database
+        </h1>
         <p className="text-lg text-purple-600 mb-6 text-center max-w-2xl">
           A comprehensive database of valuable connections for Columbia University students.
-          Click the button below to download the full database as an Excel file.
         </p>
-        <Button 
-          onClick={downloadExcel}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center gap-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Download Excel Database
-        </Button>
+        <div className="flex gap-4 mb-8">
+          <Button
+            onClick={downloadExcel}
+            className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 transform hover:scale-105 transition-all"
+          >
+            <Download className="w-5 h-5" />
+            Download Excel
+          </Button>
+          <Button
+            onClick={handleCreateNew}
+            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 transform hover:scale-105 transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Add New Contact
+          </Button>
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+      <div className="overflow-x-auto rounded-lg shadow-xl animate-fade-in">
+        <table className="min-w-full bg-white">
           <thead className="bg-purple-100">
             <tr>
-              <th className="px-6 py-4 text-left text-purple-800">No.</th>
-              <th className="px-6 py-4 text-left text-purple-800">Name</th>
-              <th className="px-6 py-4 text-left text-purple-800">Company</th>
-              <th className="px-6 py-4 text-left text-purple-800">Columbia</th>
-              <th className="px-6 py-4 text-left text-purple-800">Category</th>
-              <th className="px-6 py-4 text-left text-purple-800">Priority</th>
-              <th className="px-6 py-4 text-left text-purple-800">Contact</th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">
+                <div className="flex items-center gap-2">
+                  No.
+                  <ArrowUpDown className="w-4 h-4" />
+                </div>
+              </th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Name</th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Company</th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Columbia</th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Category</th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Priority</th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Contact</th>
+              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-purple-200">
             {sortedContacts.map((contact) => (
-              <tr key={contact.sno} className="hover:bg-purple-50">
+              <tr
+                key={contact.sno}
+                className="hover:bg-purple-50 transition-colors"
+              >
                 <td className="px-6 py-4">{contact.sno}</td>
-                <td className="px-6 py-4 font-medium">{contact.name}</td>
+                <td className="px-6 py-4 font-medium flex items-center gap-2">
+                  {contact.name}
+                  {contact.linkedinUrl && (
+                    <a
+                      href={contact.linkedinUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#0077b5] hover:text-[#006097] transition-colors"
+                    >
+                      <LinkedinIcon className="w-4 h-4" />
+                    </a>
+                  )}
+                </td>
                 <td className="px-6 py-4">{contact.company}</td>
                 <td className="px-6 py-4">{contact.columbia}</td>
                 <td className="px-6 py-4">{contact.category}</td>
                 <td className="px-6 py-4">
-                  <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
-                    contact.priority === "High" ? "bg-green-100 text-green-800" :
-                    contact.priority === "Medium" ? "bg-yellow-100 text-yellow-800" :
-                    "bg-gray-100 text-gray-800"
-                  }`}>
+                  <span
+                    className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                      contact.priority === "High"
+                        ? "bg-green-100 text-green-800"
+                        : contact.priority === "Medium"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
                     {contact.priority}
                   </span>
                 </td>
                 <td className="px-6 py-4">{contact.contact}</td>
+                <td className="px-6 py-4">
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleEdit(contact)}
+                      variant="outline"
+                      size="sm"
+                      className="hover:bg-purple-50"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={() => handleDelete(contact.sno)}
+                      variant="outline"
+                      size="sm"
+                      className="hover:bg-red-50 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <ContactDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleSaveContact}
+        initialData={editingContact}
+        mode={dialogMode}
+      />
     </div>
   );
 };
