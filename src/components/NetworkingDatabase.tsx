@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import * as XLSX from 'xlsx';
@@ -19,7 +20,8 @@ const NetworkingDatabase = () => {
       comments: "Direct access to career services; valuable for job postings and interview prep",
       category: "University Staff",
       howToUse: "Schedule regular check-ins; ask for resume feedback and employer connections",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/mrdavidfitzgerald/"
     },
     {
       sno: 2,
@@ -32,7 +34,8 @@ const NetworkingDatabase = () => {
       comments: "Career services professional specialized in engineering",
       category: "University Staff",
       howToUse: "Connect for engineering-specific opportunities and career advice",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/kimnnguyen/"
     },
     {
       sno: 3,
@@ -45,7 +48,8 @@ const NetworkingDatabase = () => {
       comments: "High-level administrator with broad university insights",
       category: "University Administration",
       howToUse: "Connect for academic concerns and university-wide networking",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/jennymak/"
     },
     {
       sno: 4,
@@ -58,7 +62,8 @@ const NetworkingDatabase = () => {
       comments: "Former Amazon engineer with strong network",
       category: "Recent Grad - Big Tech",
       howToUse: "Ask for Amazon contacts and general tech interview preparation",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/madhurima-magesh/"
     },
     {
       sno: 5,
@@ -71,7 +76,8 @@ const NetworkingDatabase = () => {
       comments: "Software Engineer at TikTok, very responsive",
       category: "Recent Grad - Big Tech",
       howToUse: "Follow up on referral offer and learn about TikTok culture",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/peize-song/"
     },
     {
       sno: 6,
@@ -84,7 +90,8 @@ const NetworkingDatabase = () => {
       comments: "Strong academic background and achievements",
       category: "Current Student with Scholarship",
       howToUse: "Connect about academic excellence and scholarship insights",
-      priority: "Medium"
+      priority: "Medium",
+      linkedinUrl: "https://www.linkedin.com/in/maximolibrandi/"
     },
     {
       sno: 7,
@@ -97,7 +104,8 @@ const NetworkingDatabase = () => {
       comments: "Software Engineer at health tech startup",
       category: "Current Student with Industry Experience",
       howToUse: "Connect for startup insights and campus life advice",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/aryanjalali/"
     },
     {
       sno: 8,
@@ -110,7 +118,8 @@ const NetworkingDatabase = () => {
       comments: "Data Science student with direct contact",
       category: "Current Student - Data Science",
       howToUse: "Connect about data science vs CS curriculum",
-      priority: "Medium"
+      priority: "Medium",
+      linkedinUrl: "https://www.linkedin.com/in/nilaaraghunathan/"
     },
     {
       sno: 9,
@@ -123,7 +132,8 @@ const NetworkingDatabase = () => {
       comments: "Gaming ML engineer at Microsoft",
       category: "Recent Grad - Big Tech",
       howToUse: "Ask for Microsoft referral and ML/gaming industry insights",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/shyam-pandya/"
     },
     {
       sno: 10,
@@ -136,7 +146,8 @@ const NetworkingDatabase = () => {
       comments: "SWE at Meta with valuable application advice",
       category: "Recent Grad - Big Tech",
       howToUse: "Ask for Meta referral and company-specific application tips",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/nithishma-allu/"
     },
     {
       sno: 11,
@@ -149,7 +160,8 @@ const NetworkingDatabase = () => {
       comments: "Has direct phone number",
       category: "Needs Research",
       howToUse: "Research background before connecting",
-      priority: "Low"
+      priority: "Low",
+      linkedinUrl: "https://www.linkedin.com/in/sachi-kaushik30/"
     },
     {
       sno: 12,
@@ -162,7 +174,8 @@ const NetworkingDatabase = () => {
       comments: "AI Engineering background",
       category: "Current Student with AI Focus",
       howToUse: "Connect about AI coursework and projects",
-      priority: "Medium"
+      priority: "Medium",
+      linkedinUrl: "https://www.linkedin.com/in/sudoyolo/"
     },
     {
       sno: 13,
@@ -175,7 +188,8 @@ const NetworkingDatabase = () => {
       comments: "TCS experience for consulting industry insights",
       category: "Current Student with Consulting Background",
       howToUse: "Connect about consulting-to-tech transition",
-      priority: "Low"
+      priority: "Low",
+      linkedinUrl: "https://www.linkedin.com/in/jmisquitta/"
     },
     {
       sno: 14,
@@ -188,7 +202,8 @@ const NetworkingDatabase = () => {
       comments: "Prestigious research background (CERN)",
       category: "Current Student with Research Background",
       howToUse: "Connect about research opportunities",
-      priority: "Medium"
+      priority: "Medium",
+      linkedinUrl: "https://www.linkedin.com/in/alok-mathur/"
     },
     {
       sno: 15,
@@ -201,7 +216,8 @@ const NetworkingDatabase = () => {
       comments: "Limited information available",
       category: "Needs Research",
       howToUse: "Research background before connecting",
-      priority: "Low"
+      priority: "Low",
+      linkedinUrl: "https://www.linkedin.com/in/bindumadhavim/"
     },
     {
       sno: 16,
@@ -214,7 +230,8 @@ const NetworkingDatabase = () => {
       comments: "Software Engineer in financial sector",
       category: "Industry Connection - Finance",
       howToUse: "Connect about finance tech opportunities",
-      priority: "Medium"
+      priority: "Medium",
+      linkedinUrl: "https://www.linkedin.com/in/sahethi-depuru-guru/"
     },
     {
       sno: 17,
@@ -227,7 +244,8 @@ const NetworkingDatabase = () => {
       comments: "Financial industry background",
       category: "Current Student - Data Science",
       howToUse: "Connect about fintech opportunities",
-      priority: "Medium"
+      priority: "Medium",
+      linkedinUrl: "https://www.linkedin.com/in/ritayanpatra/"
     },
     {
       sno: 18,
@@ -240,7 +258,8 @@ const NetworkingDatabase = () => {
       comments: "AI & Computer Vision specialization",
       category: "Current Student with Big Tech Experience",
       howToUse: "Connect about AI/CV coursework",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/anushkaagarwal24/"
     },
     {
       sno: 19,
@@ -253,7 +272,8 @@ const NetworkingDatabase = () => {
       comments: "Extensive industry experience",
       category: "Current Student with Big Tech Experience",
       howToUse: "Connect about data engineering vs data science roles",
-      priority: "Medium"
+      priority: "Medium",
+      linkedinUrl: "https://www.linkedin.com/in/mittal-sejal/"
     },
     {
       sno: 20,
@@ -266,7 +286,8 @@ const NetworkingDatabase = () => {
       comments: "ML Engineer background",
       category: "Current Student with ML Focus",
       howToUse: "Connect about ML curriculum",
-      priority: "High"
+      priority: "High",
+      linkedinUrl: "https://www.linkedin.com/in/rashmi-chelliah/"
     }
   ]);
 

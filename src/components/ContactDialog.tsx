@@ -2,9 +2,11 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -42,7 +44,12 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
 
   React.useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({
+        ...formData,
+        ...initialData,
+        // Ensure linkedinUrl exists even if it wasn't in the original data
+        linkedinUrl: initialData.linkedinUrl || ''
+      });
     }
   }, [initialData]);
 
@@ -54,17 +61,20 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] bg-gradient-to-br from-purple-50 to-white">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-gradient-to-br from-purple-50 to-white">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-purple-800">
             {mode === 'create' ? 'Add New Contact' : 'Edit Contact'}
           </DialogTitle>
+          <DialogDescription className="text-purple-600">
+            Fill in the contact details below. Fields marked with * are required.
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-purple-700">Name</label>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-purple-700">Name*</label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -72,7 +82,7 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
                 className="border-purple-200 focus:border-purple-400"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <label className="text-sm font-medium text-purple-700">Contact</label>
               <Input
                 value={formData.contact}
@@ -80,7 +90,10 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
                 className="border-purple-200 focus:border-purple-400"
               />
             </div>
-            <div className="space-y-2">
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
               <label className="text-sm font-medium text-purple-700">Company</label>
               <Input
                 value={formData.company}
@@ -88,7 +101,7 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
                 className="border-purple-200 focus:border-purple-400"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <label className="text-sm font-medium text-purple-700">Columbia Role</label>
               <Input
                 value={formData.columbia}
@@ -98,7 +111,30 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-purple-700">Category</label>
+              <Input
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="border-purple-200 focus:border-purple-400"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-purple-700">Priority</label>
+              <select
+                value={formData.priority}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                className="w-full p-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
+              >
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
             <label className="text-sm font-medium text-purple-700">LinkedIn URL</label>
             <div className="flex gap-2">
               <Input
@@ -120,56 +156,35 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-purple-700">Category</label>
-            <Input
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="border-purple-200 focus:border-purple-400"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-purple-700">Tips</label>
+              <Textarea
+                value={formData.tips}
+                onChange={(e) => setFormData({ ...formData, tips: e.target.value })}
+                className="border-purple-200 focus:border-purple-400 h-20"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-purple-700">Comments</label>
+              <Textarea
+                value={formData.comments}
+                onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+                className="border-purple-200 focus:border-purple-400 h-20"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-purple-700">Priority</label>
-            <select
-              value={formData.priority}
-              onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-              className="w-full p-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none"
-            >
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-purple-700">Tips</label>
-            <Input
-              value={formData.tips}
-              onChange={(e) => setFormData({ ...formData, tips: e.target.value })}
-              className="border-purple-200 focus:border-purple-400"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-purple-700">Comments</label>
-            <Input
-              value={formData.comments}
-              onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
-              className="border-purple-200 focus:border-purple-400"
-            />
-          </div>
-
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className="text-sm font-medium text-purple-700">How to Use</label>
-            <Input
+            <Textarea
               value={formData.howToUse}
               onChange={(e) => setFormData({ ...formData, howToUse: e.target.value })}
-              className="border-purple-200 focus:border-purple-400"
+              className="border-purple-200 focus:border-purple-400 h-20"
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-2">
             <Button
               type="submit"
               className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
