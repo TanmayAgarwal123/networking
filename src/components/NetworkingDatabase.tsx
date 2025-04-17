@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import * as XLSX from 'xlsx';
@@ -11,7 +10,6 @@ import ContactCard from './ContactCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Define the Contact type to fix the TypeScript errors
 interface Contact {
   sno: number;
   name: string;
@@ -32,7 +30,6 @@ interface Contact {
 
 const NetworkingDatabase = () => {
   const [contacts, setContacts] = useState<Contact[]>([
-    // Career Services & University Staff
     {
       sno: 1,
       name: "David Fitzgerald",
@@ -435,7 +432,13 @@ const NetworkingDatabase = () => {
 
   const handleDelete = (sno: number) => {
     const newContacts = contacts.filter(c => c.sno !== sno);
-    setContacts(newContacts);
+    
+    const renumberedContacts = newContacts.map((contact, index) => ({
+      ...contact,
+      sno: index + 1
+    }));
+    
+    setContacts(renumberedContacts);
     toast.success("Contact deleted successfully!");
   };
 
@@ -447,7 +450,16 @@ const NetworkingDatabase = () => {
 
   const handleSaveContact = (contact: Contact) => {
     if (dialogMode === 'create') {
-      setContacts([...contacts, contact]);
+      const nextSno = contacts.length > 0 
+        ? Math.max(...contacts.map(c => c.sno)) + 1 
+        : 1;
+      
+      const newContact = {
+        ...contact,
+        sno: nextSno
+      };
+      
+      setContacts([...contacts, newContact]);
       toast.success("New contact added successfully!");
     } else {
       const newContacts = contacts.map(c => c.sno === contact.sno ? contact : c);
@@ -536,6 +548,21 @@ const NetworkingDatabase = () => {
     const priorityOrder = { "High": 1, "Medium": 2, "Low": 3 };
     return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
   });
+
+  useEffect(() => {
+    if (contacts.length > 0) {
+      updateContactNumbers();
+    }
+  }, [contacts.length]);
+
+  const updateContactNumbers = () => {
+    const updatedContacts = [...contacts].map((contact, index) => ({
+      ...contact,
+      sno: index + 1
+    }));
+    
+    setContacts(updatedContacts);
+  };
 
   return (
     <div className="container mx-auto py-8 px-4 min-h-screen bg-gradient-to-br from-purple-100 via-white to-purple-50">
@@ -668,7 +695,7 @@ const NetworkingDatabase = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-purple-200">
-                    {sortedContacts.map((contact) => (
+                    {sortedContacts.map((contact, index) => (
                       <motion.tr
                         key={contact.sno}
                         className="hover:bg-purple-50 transition-colors"
@@ -676,7 +703,7 @@ const NetworkingDatabase = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <td className="px-6 py-4">{contact.sno}</td>
+                        <td className="px-6 py-4">{index + 1}</td>
                         <td className="px-6 py-4 font-medium flex items-center gap-2">
                           {contact.name}
                           {contact.linkedinUrl && (
@@ -763,10 +790,10 @@ const NetworkingDatabase = () => {
                 animate="visible"
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
-                {sortedContacts.map((contact) => (
+                {sortedContacts.map((contact, index) => (
                   <ContactCard 
                     key={contact.sno} 
-                    contact={contact} 
+                    contact={{...contact, sno: index + 1}}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onAddTag={handleAddTag}
@@ -787,10 +814,10 @@ const NetworkingDatabase = () => {
               className={viewMode === 'cards' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : ""}
             >
               {viewMode === 'cards' ? (
-                sortedContacts.filter(c => c.priority === 'High').map((contact) => (
+                sortedContacts.filter(c => c.priority === 'High').map((contact, index) => (
                   <ContactCard 
                     key={contact.sno} 
-                    contact={contact} 
+                    contact={{...contact, sno: index + 1}}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onAddTag={handleAddTag}
@@ -823,7 +850,7 @@ const NetworkingDatabase = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-purple-200">
-                      {sortedContacts.filter(c => c.priority === 'High').map((contact) => (
+                      {sortedContacts.filter(c => c.priority === 'High').map((contact, index) => (
                         <motion.tr
                           key={contact.sno}
                           className="hover:bg-purple-50 transition-colors"
@@ -831,7 +858,7 @@ const NetworkingDatabase = () => {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3 }}
                         >
-                          <td className="px-6 py-4">{contact.sno}</td>
+                          <td className="px-6 py-4">{index + 1}</td>
                           <td className="px-6 py-4 font-medium flex items-center gap-2">
                             {contact.name}
                             {contact.linkedinUrl && (
