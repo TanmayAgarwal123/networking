@@ -1,41 +1,61 @@
 
-import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { LinkedinIcon, Save, X, Plus } from "lucide-react";
-import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { toast } from "sonner";
 
-interface ContactDialogProps {
+// Define the Contact interface here to match the one in NetworkingDatabase.tsx
+interface Contact {
+  sno: number;
+  name: string;
+  contact: string;
+  email: string;
+  company: string;
+  columbia: string;
+  tips: string;
+  comments: string;
+  category: string;
+  howToUse: string;
+  priority: string;
+  linkedinUrl: string;
+  rank: number;
+  notes: string;
+  tags?: string[];
+}
+
+// Define the props for the ContactDialog component
+export interface ContactDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (contact: any) => void;
-  initialData?: any;
+  onSave: (contact: Contact) => void;
+  contact: Contact | null; // Make contact prop accept null for creating new contacts
   mode: 'create' | 'edit';
-  allTags?: string[];
+  existingContacts: Contact[];
 }
 
 const ContactDialog: React.FC<ContactDialogProps> = ({
   isOpen,
   onClose,
   onSave,
-  initialData,
+  contact,
   mode,
-  allTags = []
+  existingContacts
 }) => {
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = useState<Contact>({
+    sno: 0,
     name: '',
     contact: '',
-    email: 'N/A',
+    email: '',
     company: '',
     columbia: '',
     tips: '',
@@ -46,27 +66,20 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
     linkedinUrl: '',
     rank: 50,
     notes: '',
-    tags: [] as string[]
+    tags: []
   });
 
-  const [newTag, setNewTag] = React.useState('');
-
-  React.useEffect(() => {
-    if (initialData) {
-      setFormData({
-        ...formData,
-        ...initialData,
-        rank: initialData.rank || 50,
-        notes: initialData.notes || '',
-        linkedinUrl: initialData.linkedinUrl || '',
-        tags: initialData.tags || []
-      });
+  useEffect(() => {
+    if (mode === 'edit' && contact) {
+      setFormData(contact);
     } else {
-      // Reset form when opening for create
+      // For create mode, generate a new sno (max + 1)
+      const maxSno = existingContacts.reduce((max, c) => Math.max(max, c.sno), 0);
       setFormData({
+        sno: maxSno + 1,
         name: '',
         contact: '',
-        email: 'N/A',
+        email: '',
         company: '',
         columbia: '',
         tips: '',
@@ -80,282 +93,216 @@ const ContactDialog: React.FC<ContactDialogProps> = ({
         tags: []
       });
     }
-  }, [initialData, isOpen]);
+  }, [mode, contact, existingContacts]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...formData, sno: initialData?.sno || Date.now() });
+    
+    if (!formData.name.trim()) {
+      toast.error("Name is required!");
+      return;
+    }
+
+    onSave(formData);
     onClose();
-  };
-
-  const handleAddTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData({
-        ...formData,
-        tags: [...formData.tags, newTag.trim()]
-      });
-      setNewTag('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter(tag => tag !== tagToRemove)
-    });
-  };
-
-  const handleAddExistingTag = (tag: string) => {
-    if (!formData.tags.includes(tag)) {
-      setFormData({
-        ...formData,
-        tags: [...formData.tags, tag]
-      });
-    }
-  };
-
-  const formContainerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
-  };
-
-  const formItemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { type: "spring", stiffness: 300, damping: 24 }
-    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-gradient-to-br from-purple-50 to-white">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-b from-white to-purple-50">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-800 to-indigo-600">
+          <DialogTitle className="text-xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-800 to-indigo-600">
             {mode === 'create' ? 'Add New Contact' : 'Edit Contact'}
           </DialogTitle>
-          <DialogDescription className="text-purple-600">
-            Fill in the contact details below. Fields marked with * are required.
-          </DialogDescription>
         </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Contact Name"
+                className="border-purple-200 focus-visible:ring-purple-500"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="contact">Contact Info</Label>
+              <Input
+                id="contact"
+                name="contact"
+                value={formData.contact}
+                onChange={handleChange}
+                placeholder="Phone or LinkedIn"
+                className="border-purple-200 focus-visible:ring-purple-500"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Email Address"
+                className="border-purple-200 focus-visible:ring-purple-500"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="company">Company</Label>
+              <Input
+                id="company"
+                name="company"
+                value={formData.company}
+                onChange={handleChange}
+                placeholder="Company / Organization"
+                className="border-purple-200 focus-visible:ring-purple-500"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="columbia">Columbia Connection</Label>
+              <Input
+                id="columbia"
+                name="columbia"
+                value={formData.columbia}
+                onChange={handleChange}
+                placeholder="Connection to Columbia"
+                className="border-purple-200 focus-visible:ring-purple-500"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Input
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                placeholder="Contact Category"
+                className="border-purple-200 focus-visible:ring-purple-500"
+              />
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <motion.div
-            variants={formContainerVariants}
-            initial="hidden"
-            animate="visible"
-            className="space-y-4"
-          >
-            <motion.div variants={formItemVariants} className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Name*</label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Contact</label>
-                <Input
-                  value={formData.contact}
-                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500"
-                />
-              </div>
-            </motion.div>
-
-            <motion.div variants={formItemVariants} className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Company</label>
-                <Input
-                  value={formData.company}
-                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Columbia Role</label>
-                <Input
-                  value={formData.columbia}
-                  onChange={(e) => setFormData({ ...formData, columbia: e.target.value })}
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500"
-                />
-              </div>
-            </motion.div>
-
-            <motion.div variants={formItemVariants} className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Category</label>
-                <Input
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Priority</label>
-                <select
-                  value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                  className="w-full p-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-            </motion.div>
-
-            <motion.div variants={formItemVariants} className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Rank (0-100)</label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.rank}
-                  onChange={(e) => setFormData({ ...formData, rank: parseInt(e.target.value) || 0 })}
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">LinkedIn URL</label>
-                <div className="flex gap-2">
-                  <Input
-                    value={formData.linkedinUrl}
-                    onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
-                    className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500"
-                    placeholder="https://linkedin.com/in/username"
-                  />
-                  {formData.linkedinUrl && (
-                    <a
-                      href={formData.linkedinUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center p-2 bg-[#0077b5] text-white rounded-md hover:bg-[#006097] transition-colors"
-                    >
-                      <LinkedinIcon className="w-5 h-5" />
-                    </a>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div variants={formItemVariants} className="space-y-1">
-              <label className="text-sm font-medium text-purple-700">Tags</label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {formData.tags.map(tag => (
-                  <Badge 
-                    key={tag} 
-                    className="bg-blue-100 text-blue-800 hover:bg-blue-200 flex items-center gap-1"
-                  >
-                    {tag}
-                    <X 
-                      className="w-3 h-3 cursor-pointer hover:text-red-500"
-                      onClick={() => handleRemoveTag(tag)} 
-                    />
-                  </Badge>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="Add a tag..."
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddTag();
-                    }
-                  }}
-                />
-                <Button 
-                  type="button"
-                  onClick={handleAddTag}
-                  variant="outline"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-              {allTags.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">Existing tags (click to add):</p>
-                  <div className="flex flex-wrap gap-1">
-                    {allTags.filter(tag => !formData.tags.includes(tag)).map(tag => (
-                      <Badge 
-                        key={tag} 
-                        variant="outline"
-                        className="bg-gray-100 cursor-pointer hover:bg-blue-100"
-                        onClick={() => handleAddExistingTag(tag)}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-
-            <motion.div variants={formItemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Tips</label>
-                <Textarea
-                  value={formData.tips}
-                  onChange={(e) => setFormData({ ...formData, tips: e.target.value })}
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500 h-20"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Comments</label>
-                <Textarea
-                  value={formData.comments}
-                  onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500 h-20"
-                />
-              </div>
-            </motion.div>
-
-            <motion.div variants={formItemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">Personal Notes</label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500 h-20"
-                  placeholder="Add your personal notes about this contact..."
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-purple-700">How to Use</label>
-                <Textarea
-                  value={formData.howToUse}
-                  onChange={(e) => setFormData({ ...formData, howToUse: e.target.value })}
-                  className="border-purple-200 focus:border-purple-400 focus-visible:ring-purple-500 h-20"
-                />
-              </div>
-            </motion.div>
-          </motion.div>
-
-          <DialogFooter className="pt-2">
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Button
-                type="submit"
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center gap-2"
+            <div className="space-y-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select 
+                name="priority"
+                value={formData.priority} 
+                onValueChange={(value) => handleSelectChange("priority", value)}
               >
-                <Save className="w-4 h-4" />
-                Save Contact
-              </Button>
-            </motion.div>
+                <SelectTrigger className="border-purple-200 focus-visible:ring-purple-500">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
+              <Input
+                id="linkedinUrl"
+                name="linkedinUrl"
+                value={formData.linkedinUrl}
+                onChange={handleChange}
+                placeholder="LinkedIn Profile URL"
+                className="border-purple-200 focus-visible:ring-purple-500"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="rank">Rank (1-100)</Label>
+              <Input
+                id="rank"
+                name="rank"
+                type="number"
+                min="1"
+                max="100"
+                value={formData.rank}
+                onChange={handleChange}
+                placeholder="Contact Rank"
+                className="border-purple-200 focus-visible:ring-purple-500"
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="tips">Tips</Label>
+            <Textarea
+              id="tips"
+              name="tips"
+              value={formData.tips}
+              onChange={handleChange}
+              placeholder="Networking Tips"
+              className="h-20 resize-none border-purple-200 focus-visible:ring-purple-500"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="howToUse">How To Use</Label>
+            <Textarea
+              id="howToUse"
+              name="howToUse"
+              value={formData.howToUse}
+              onChange={handleChange}
+              placeholder="How to leverage this contact"
+              className="h-20 resize-none border-purple-200 focus-visible:ring-purple-500"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="comments">Comments</Label>
+            <Textarea
+              id="comments"
+              name="comments"
+              value={formData.comments}
+              onChange={handleChange}
+              placeholder="Additional comments"
+              className="h-20 resize-none border-purple-200 focus-visible:ring-purple-500"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="notes">Personal Notes</Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              placeholder="Your personal notes about this contact"
+              className="h-20 resize-none border-purple-200 focus-visible:ring-purple-500"
+            />
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+            >
+              {mode === 'create' ? 'Add Contact' : 'Save Changes'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

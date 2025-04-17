@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import * as XLSX from 'xlsx';
@@ -378,7 +377,7 @@ const NetworkingDatabase = () => {
     rank: contact.rank || 50,
     notes: contact.notes || '',
     tags: contact.tags || []
-  })));
+  }));
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -388,13 +387,10 @@ const NetworkingDatabase = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [priorityFilter, setPriorityFilter] = useState<string>("All");
 
-  // Extract unique categories for filter dropdown
   const uniqueCategories = ["All", ...Array.from(new Set(contacts.map(c => c.category)))];
   
-  // Get unique tags across all contacts
   const allTags = Array.from(new Set(contacts.flatMap(contact => contact.tags || [])));
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -518,7 +514,6 @@ const NetworkingDatabase = () => {
     );
   };
 
-  // Filter contacts based on search query and filters
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = 
       contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -533,13 +528,10 @@ const NetworkingDatabase = () => {
     return matchesSearch && matchesCategory && matchesPriority;
   });
 
-  // Sort filtered contacts
   const sortedContacts = [...filteredContacts].sort((a, b) => {
-    // First sort by rank (descending)
     const rankDiff = b.rank - a.rank;
     if (rankDiff !== 0) return rankDiff;
     
-    // Then by priority if ranks are equal
     const priorityOrder = { "High": 1, "Medium": 2, "Low": 3 };
     return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
   });
