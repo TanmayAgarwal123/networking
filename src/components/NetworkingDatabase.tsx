@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import * as XLSX from 'xlsx';
@@ -806,4 +807,141 @@ const NetworkingDatabase = () => {
                   />
                 ))
               ) : (
-                <div className="overflow-x-
+                <div className="overflow-x-auto rounded-lg shadow-lg animate-fade-in">
+                  <table className="min-w-full bg-white">
+                    <thead className="bg-gradient-to-r from-purple-100 to-violet-100">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">
+                          <div className="flex items-center gap-2">
+                            No.
+                            <ArrowUpDown className="w-4 h-4" />
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Name</th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Company</th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Columbia</th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Category</th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Priority</th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Contact</th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Rank</th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Notes</th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Tags</th>
+                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-purple-200">
+                      {sortedContacts.filter(c => c.priority === 'High').map((contact) => (
+                        <motion.tr
+                          key={contact.sno}
+                          className="hover:bg-purple-50 transition-colors"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <td className="px-6 py-4">{contact.sno}</td>
+                          <td className="px-6 py-4 font-medium flex items-center gap-2">
+                            {contact.name}
+                            {contact.linkedinUrl && (
+                              <motion.a
+                                whileHover={{ scale: 1.2, rotate: 5 }}
+                                href={contact.linkedinUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#0077b5] hover:text-[#006097] transition-colors"
+                              >
+                                <LinkedinIcon className="w-4 h-4" />
+                              </motion.a>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">{contact.company}</td>
+                          <td className="px-6 py-4">{contact.columbia}</td>
+                          <td className="px-6 py-4">{contact.category}</td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                                contact.priority === "High"
+                                  ? "bg-green-100 text-green-800"
+                                  : contact.priority === "Medium"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {contact.priority}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">{contact.contact}</td>
+                          <td className="px-6 py-4">{contact.rank}</td>
+                          <td className="px-6 py-4">
+                            {contact.notes ? (
+                              <div className="max-w-xs overflow-hidden text-ellipsis">
+                                {contact.notes}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">No notes</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1">
+                              {contact.tags?.map(tag => (
+                                <span key={tag} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              <motion.div whileHover={{ scale: 1.1 }}>
+                                <Button
+                                  onClick={() => handleEdit(contact)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="hover:bg-purple-50"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </motion.div>
+                              <motion.div whileHover={{ scale: 1.1 }}>
+                                <Button
+                                  onClick={() => handleDelete(contact.sno)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="hover:bg-red-50 text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </motion.div>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </motion.div>
+          </TabsContent>
+          
+          <TabsContent value="recent">
+            <div className="p-4 text-center text-gray-500">
+              Coming soon: View recently added contacts
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+      
+      {isDialogOpen && (
+        <ContactDialog
+          isOpen={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
+          onSave={handleSaveContact}
+          contact={editingContact}
+          mode={dialogMode}
+          existingContacts={contacts}
+        />
+      )}
+    </div>
+  );
+};
+
+export default NetworkingDatabase;
