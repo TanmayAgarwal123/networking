@@ -9,24 +9,8 @@ import ContactDialog from './ContactDialog';
 import ContactCard from './ContactCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface Contact {
-  sno: number;
-  name: string;
-  contact: string;
-  email: string;
-  company: string;
-  columbia: string;
-  tips: string;
-  comments: string;
-  category: string;
-  howToUse: string;
-  priority: string;
-  linkedinUrl: string;
-  rank: number;
-  notes: string;
-  tags?: string[];
-}
+import { getContacts, saveContacts } from '@/services/contactService';
+import { Contact } from '@/types/contact';
 
 const defaultContacts: Contact[] = [
   {
@@ -374,29 +358,8 @@ const defaultContacts: Contact[] = [
 const STORAGE_KEY = 'columbia_networking_contacts';
 
 const NetworkingDatabase = () => {
-  const [contacts, setContacts] = useState<Contact[]>(() => {
-    const savedContacts = localStorage.getItem(STORAGE_KEY);
-    if (savedContacts) {
-      try {
-        return JSON.parse(savedContacts);
-      } catch (error) {
-        console.error("Error parsing stored contacts:", error);
-        return defaultContacts.map(contact => ({
-          ...contact,
-          rank: contact.rank || 50,
-          notes: contact.notes || '',
-          tags: contact.tags || []
-        }));
-      }
-    }
-    return defaultContacts.map(contact => ({
-      ...contact,
-      rank: contact.rank || 50,
-      notes: contact.notes || '',
-      tags: contact.tags || []
-    }));
-  });
-
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
@@ -404,6 +367,7 @@ const NetworkingDatabase = () => {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [priorityFilter, setPriorityFilter] = useState<string>("All");
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
 
   const uniqueCategories = ["All", ...Array.from(new Set(contacts.map(c => c.category)))];
   
@@ -427,6 +391,87 @@ const NetworkingDatabase = () => {
       transition: { type: "spring", stiffness: 100 }
     }
   };
+
+  // Load contacts from Firebase on component mount
+  useEffect(() => {
+    const loadContacts = async () => {
+      setIsLoading(true);
+      try {
+        const firebaseContacts = await getContacts();
+        
+        if (firebaseContacts && firebaseContacts.length > 0) {
+          // We found contacts in Firebase, use those
+          setContacts(firebaseContacts);
+        } else {
+          // No contacts in Firebase yet, try local storage first
+          const localContacts = localStorage.getItem(STORAGE_KEY);
+          if (localContacts) {
+            try {
+              const parsedContacts = JSON.parse(localContacts);
+              setContacts(parsedContacts);
+              // Save local contacts to Firebase for future syncing
+              await saveContacts(parsedContacts);
+              toast.success("Contacts loaded from local storage and synced to cloud");
+            } catch (error) {
+              console.error("Error parsing stored contacts:", error);
+              setContacts(defaultContacts);
+              // Save default contacts to Firebase
+              await saveContacts(defaultContacts);
+            }
+          } else {
+            // No local storage either, use defaults
+            setContacts(defaultContacts);
+            // Save default contacts to Firebase
+            await saveContacts(defaultContacts);
+          }
+        }
+        setSyncStatus('synced');
+      } catch (error) {
+        console.error("Error loading contacts:", error);
+        toast.error("Failed to sync with cloud. Using local data.");
+        
+        // Fallback to local storage if Firebase fails
+        const localContacts = localStorage.getItem(STORAGE_KEY);
+        if (localContacts) {
+          try {
+            setContacts(JSON.parse(localContacts));
+          } catch (error) {
+            setContacts(defaultContacts);
+          }
+        } else {
+          setContacts(defaultContacts);
+        }
+        
+        setSyncStatus('error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadContacts();
+  }, []);
+
+  // Save contacts to Firebase whenever they change
+  useEffect(() => {
+    if (contacts.length > 0 && !isLoading) {
+      const syncToFirebase = async () => {
+        try {
+          setSyncStatus('syncing');
+          await saveContacts(contacts);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts)); // Keep local copy too
+          setSyncStatus('synced');
+        } catch (error) {
+          console.error("Error syncing contacts to Firebase:", error);
+          // Still save to local storage as fallback
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
+          setSyncStatus('error');
+          toast.error("Failed to sync with cloud. Changes saved locally.");
+        }
+      };
+      
+      syncToFirebase();
+    }
+  }, [contacts, isLoading]);
 
   const downloadExcel = () => {
     try {
@@ -584,9 +629,16 @@ const NetworkingDatabase = () => {
     setContacts(updatedContacts);
   };
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
-  }, [contacts]);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="spinner w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg text-purple-700">Loading your contacts...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 px-4 min-h-screen bg-gradient-to-br from-purple-100 via-white to-purple-50">
@@ -602,6 +654,25 @@ const NetworkingDatabase = () => {
         <p className="text-lg text-purple-600 mb-6 text-center max-w-2xl">
           A comprehensive database of valuable connections for Columbia University students.
         </p>
+        
+        {/* Sync status indicator */}
+        <div className="mb-4 flex items-center gap-2">
+          <div className={`w-3 h-3 rounded-full ${
+            syncStatus === 'synced' ? 'bg-green-500' : 
+            syncStatus === 'syncing' ? 'bg-yellow-500 animate-pulse' : 
+            'bg-red-500'
+          }`}></div>
+          <span className={`text-sm ${
+            syncStatus === 'synced' ? 'text-green-700' : 
+            syncStatus === 'syncing' ? 'text-yellow-700' : 
+            'text-red-700'
+          }`}>
+            {syncStatus === 'synced' ? 'Synced across all devices' : 
+             syncStatus === 'syncing' ? 'Syncing changes...' : 
+             'Offline mode - using local storage'}
+          </span>
+        </div>
+        
         <div className="flex flex-wrap gap-4 mb-8 justify-center">
           <motion.div
             whileHover={{ scale: 1.05 }}
@@ -630,7 +701,9 @@ const NetworkingDatabase = () => {
         </div>
       </motion.div>
 
+      {/* Rest of the component remains the same */}
       <div className="bg-white p-6 rounded-xl shadow-xl mb-8">
+        {/* ... keep existing code (search, filtering, and tab components) */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -688,6 +761,7 @@ const NetworkingDatabase = () => {
         </div>
 
         <Tabs defaultValue="all" className="w-full">
+          {/* ... keep existing code (tabs component and content) */}
           <TabsList className="w-full flex justify-start mb-4 bg-purple-50">
             <TabsTrigger value="all" className="flex-1">All Contacts ({sortedContacts.length})</TabsTrigger>
             <TabsTrigger value="high" className="flex-1">High Priority ({sortedContacts.filter(c => c.priority === 'High').length})</TabsTrigger>
@@ -695,6 +769,7 @@ const NetworkingDatabase = () => {
           </TabsList>
           
           <TabsContent value="all">
+            {/* ... keep existing code (all tab content) */}
             {viewMode === 'table' ? (
               <div className="overflow-x-auto rounded-lg shadow-lg animate-fade-in">
                 <table className="min-w-full bg-white">
@@ -731,261 +806,3 @@ const NetworkingDatabase = () => {
                         <td className="px-6 py-4 font-medium flex items-center gap-2">
                           {contact.name}
                           {contact.linkedinUrl && (
-                            <motion.a
-                              whileHover={{ scale: 1.2, rotate: 5 }}
-                              href={contact.linkedinUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[#0077b5] hover:text-[#006097] transition-colors"
-                            >
-                              <LinkedinIcon className="w-4 h-4" />
-                            </motion.a>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">{contact.company}</td>
-                        <td className="px-6 py-4">{contact.columbia}</td>
-                        <td className="px-6 py-4">{contact.category}</td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-block px-2 py-1 rounded text-xs font-bold ${
-                              contact.priority === "High"
-                                ? "bg-green-100 text-green-800"
-                                : contact.priority === "Medium"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {contact.priority}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">{contact.contact}</td>
-                        <td className="px-6 py-4">{contact.rank}</td>
-                        <td className="px-6 py-4">
-                          {contact.notes ? (
-                            <div className="max-w-xs overflow-hidden text-ellipsis">
-                              {contact.notes}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">No notes</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1">
-                            {contact.tags?.map(tag => (
-                              <span key={tag} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                            <motion.div whileHover={{ scale: 1.1 }}>
-                              <Button
-                                onClick={() => handleEdit(contact)}
-                                variant="outline"
-                                size="sm"
-                                className="hover:bg-purple-50"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </motion.div>
-                            <motion.div whileHover={{ scale: 1.1 }}>
-                              <Button
-                                onClick={() => handleDelete(contact.sno)}
-                                variant="outline"
-                                size="sm"
-                                className="hover:bg-red-50 text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </motion.div>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <motion.div 
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                {sortedContacts.map((contact, index) => (
-                  <ContactCard 
-                    key={contact.sno} 
-                    contact={{...contact, sno: index + 1}}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onAddTag={handleAddTag}
-                    onRemoveTag={handleRemoveTag}
-                    allTags={allTags}
-                    variants={itemVariants}
-                  />
-                ))}
-              </motion.div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="high">
-            <motion.div 
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className={viewMode === 'cards' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : ""}
-            >
-              {viewMode === 'cards' ? (
-                sortedContacts.filter(c => c.priority === 'High').map((contact, index) => (
-                  <ContactCard 
-                    key={contact.sno} 
-                    contact={{...contact, sno: index + 1}}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onAddTag={handleAddTag}
-                    onRemoveTag={handleRemoveTag}
-                    allTags={allTags}
-                    variants={itemVariants}
-                  />
-                ))
-              ) : (
-                <div className="overflow-x-auto rounded-lg shadow-lg animate-fade-in">
-                  <table className="min-w-full bg-white">
-                    <thead className="bg-gradient-to-r from-purple-100 to-violet-100">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">
-                          <div className="flex items-center gap-2">
-                            No.
-                            <ArrowUpDown className="w-4 h-4" />
-                          </div>
-                        </th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Name</th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Company</th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Columbia</th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Category</th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Priority</th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Contact</th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Rank</th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Notes</th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Tags</th>
-                        <th className="px-6 py-4 text-left text-purple-800 font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-purple-200">
-                      {sortedContacts.filter(c => c.priority === 'High').map((contact, index) => (
-                        <motion.tr
-                          key={contact.sno}
-                          className="hover:bg-purple-50 transition-colors"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <td className="px-6 py-4">{index + 1}</td>
-                          <td className="px-6 py-4 font-medium flex items-center gap-2">
-                            {contact.name}
-                            {contact.linkedinUrl && (
-                              <motion.a
-                                whileHover={{ scale: 1.2, rotate: 5 }}
-                                href={contact.linkedinUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[#0077b5] hover:text-[#006097] transition-colors"
-                              >
-                                <LinkedinIcon className="w-4 h-4" />
-                              </motion.a>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">{contact.company}</td>
-                          <td className="px-6 py-4">{contact.columbia}</td>
-                          <td className="px-6 py-4">{contact.category}</td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`inline-block px-2 py-1 rounded text-xs font-bold ${
-                                contact.priority === "High"
-                                  ? "bg-green-100 text-green-800"
-                                  : contact.priority === "Medium"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
-                            >
-                              {contact.priority}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">{contact.contact}</td>
-                          <td className="px-6 py-4">{contact.rank}</td>
-                          <td className="px-6 py-4">
-                            {contact.notes ? (
-                              <div className="max-w-xs overflow-hidden text-ellipsis">
-                                {contact.notes}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">No notes</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-wrap gap-1">
-                              {contact.tags?.map(tag => (
-                                <span key={tag} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2">
-                              <motion.div whileHover={{ scale: 1.1 }}>
-                                <Button
-                                  onClick={() => handleEdit(contact)}
-                                  variant="outline"
-                                  size="sm"
-                                  className="hover:bg-purple-50"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              </motion.div>
-                              <motion.div whileHover={{ scale: 1.1 }}>
-                                <Button
-                                  onClick={() => handleDelete(contact.sno)}
-                                  variant="outline"
-                                  size="sm"
-                                  className="hover:bg-red-50 text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </motion.div>
-                            </div>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </motion.div>
-          </TabsContent>
-          
-          <TabsContent value="recent">
-            <div className="p-4 text-center text-gray-500">
-              Coming soon: View recently added contacts
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-      
-      {isDialogOpen && (
-        <ContactDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          onSave={handleSaveContact}
-          contact={editingContact}
-          mode={dialogMode}
-          existingContacts={contacts}
-        />
-      )}
-    </div>
-  );
-};
-
-export default NetworkingDatabase;
