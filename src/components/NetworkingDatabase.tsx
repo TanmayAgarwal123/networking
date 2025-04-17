@@ -1,12 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import * as XLSX from 'xlsx';
 import { toast } from "sonner";
-import { Download, Edit, Trash2, LinkedinIcon, Plus, ArrowUpDown } from "lucide-react";
+import { Download, Edit, Trash2, LinkedinIcon, Plus, ArrowUpDown, Search, Tags, Filter, Calendar, Mail } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { motion } from "framer-motion";
 import ContactDialog from './ContactDialog';
+import ContactCard from './ContactCard';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Define the Contact type to fix the TypeScript errors
+interface Contact {
+  sno: number;
+  name: string;
+  contact: string;
+  email: string;
+  company: string;
+  columbia: string;
+  tips: string;
+  comments: string;
+  category: string;
+  howToUse: string;
+  priority: string;
+  linkedinUrl: string;
+  rank: number;
+  notes: string;
+  tags?: string[];
+}
 
 const NetworkingDatabase = () => {
-  const [contacts, setContacts] = useState([
+  const [contacts, setContacts] = useState<Contact[]>([
     // Career Services & University Staff
     {
       sno: 1,
@@ -20,7 +44,10 @@ const NetworkingDatabase = () => {
       category: "University Staff",
       howToUse: "Schedule regular check-ins; ask for resume feedback and employer connections",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/mrdavidfitzgerald/"
+      linkedinUrl: "https://www.linkedin.com/in/mrdavidfitzgerald/",
+      rank: 95,
+      notes: "",
+      tags: ["Career Services", "Columbia Staff"]
     },
     {
       sno: 2,
@@ -34,7 +61,10 @@ const NetworkingDatabase = () => {
       category: "University Staff",
       howToUse: "Connect for engineering-specific opportunities and career advice",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/kimnnguyen/"
+      linkedinUrl: "https://www.linkedin.com/in/kimnnguyen/",
+      rank: 90,
+      notes: "",
+      tags: ["Career Services", "Columbia Staff"]
     },
     {
       sno: 3,
@@ -48,7 +78,10 @@ const NetworkingDatabase = () => {
       category: "University Administration",
       howToUse: "Connect for academic concerns and university-wide networking",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/jennymak/"
+      linkedinUrl: "https://www.linkedin.com/in/jennymak/",
+      rank: 85,
+      notes: "",
+      tags: ["Administration", "Columbia Staff"]
     },
     {
       sno: 4,
@@ -62,7 +95,10 @@ const NetworkingDatabase = () => {
       category: "Recent Grad - Big Tech",
       howToUse: "Ask for Amazon contacts and general tech interview preparation",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/madhurima-magesh/"
+      linkedinUrl: "https://www.linkedin.com/in/madhurima-magesh/",
+      rank: 92,
+      notes: "Strong Amazon network",
+      tags: ["Amazon", "Big Tech"]
     },
     {
       sno: 5,
@@ -76,7 +112,10 @@ const NetworkingDatabase = () => {
       category: "Recent Grad - Big Tech",
       howToUse: "Follow up on referral offer and learn about TikTok culture",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/peize-song/"
+      linkedinUrl: "https://www.linkedin.com/in/peize-song/",
+      rank: 98,
+      notes: "Responsive, offers referrals",
+      tags: ["TikTok", "Big Tech"]
     },
     {
       sno: 6,
@@ -90,7 +129,10 @@ const NetworkingDatabase = () => {
       category: "Current Student with Scholarship",
       howToUse: "Connect about academic excellence and scholarship insights",
       priority: "Medium",
-      linkedinUrl: "https://www.linkedin.com/in/maximolibrandi/"
+      linkedinUrl: "https://www.linkedin.com/in/maximolibrandi/",
+      rank: 75,
+      notes: "Fulbright Scholar",
+      tags: ["Scholarship", "Academic"]
     },
     {
       sno: 7,
@@ -104,7 +146,10 @@ const NetworkingDatabase = () => {
       category: "Current Student with Industry Experience",
       howToUse: "Connect for startup insights and campus life advice",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/aryanjalali/"
+      linkedinUrl: "https://www.linkedin.com/in/aryanjalali/",
+      rank: 88,
+      notes: "Health tech startup",
+      tags: ["Startup", "Health Tech"]
     },
     {
       sno: 8,
@@ -118,7 +163,10 @@ const NetworkingDatabase = () => {
       category: "Current Student - Data Science",
       howToUse: "Connect about data science vs CS curriculum",
       priority: "Medium",
-      linkedinUrl: "https://www.linkedin.com/in/nilaaraghunathan/"
+      linkedinUrl: "https://www.linkedin.com/in/nilaaraghunathan/",
+      rank: 68,
+      notes: "Data Science student",
+      tags: ["Data Science", "Curriculum"]
     },
     {
       sno: 9,
@@ -132,7 +180,10 @@ const NetworkingDatabase = () => {
       category: "Recent Grad - Big Tech",
       howToUse: "Ask for Microsoft referral and ML/gaming industry insights",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/shyam-pandya/"
+      linkedinUrl: "https://www.linkedin.com/in/shyam-pandya/",
+      rank: 96,
+      notes: "Gaming ML engineer",
+      tags: ["Microsoft", "Big Tech", "ML", "Gaming"]
     },
     {
       sno: 10,
@@ -146,7 +197,10 @@ const NetworkingDatabase = () => {
       category: "Recent Grad - Big Tech",
       howToUse: "Ask for Meta referral and company-specific application tips",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/nithishma-allu/"
+      linkedinUrl: "https://www.linkedin.com/in/nithishma-allu/",
+      rank: 94,
+      notes: "SWE at Meta",
+      tags: ["Meta", "Big Tech", "SWE"]
     },
     {
       sno: 11,
@@ -160,7 +214,10 @@ const NetworkingDatabase = () => {
       category: "Needs Research",
       howToUse: "Research background before connecting",
       priority: "Low",
-      linkedinUrl: "https://www.linkedin.com/in/sachi-kaushik30/"
+      linkedinUrl: "https://www.linkedin.com/in/sachi-kaushik30/",
+      rank: 30,
+      notes: "Direct phone number",
+      tags: ["Research"]
     },
     {
       sno: 12,
@@ -174,7 +231,10 @@ const NetworkingDatabase = () => {
       category: "Current Student with AI Focus",
       howToUse: "Connect about AI coursework and projects",
       priority: "Medium",
-      linkedinUrl: "https://www.linkedin.com/in/sudoyolo/"
+      linkedinUrl: "https://www.linkedin.com/in/sudoyolo/",
+      rank: 70,
+      notes: "AI Engineering",
+      tags: ["AI", "Engineering"]
     },
     {
       sno: 13,
@@ -188,7 +248,10 @@ const NetworkingDatabase = () => {
       category: "Current Student with Consulting Background",
       howToUse: "Connect about consulting-to-tech transition",
       priority: "Low",
-      linkedinUrl: "https://www.linkedin.com/in/jmisquitta/"
+      linkedinUrl: "https://www.linkedin.com/in/jmisquitta/",
+      rank: 40,
+      notes: "Consulting background",
+      tags: ["Consulting"]
     },
     {
       sno: 14,
@@ -202,7 +265,10 @@ const NetworkingDatabase = () => {
       category: "Current Student with Research Background",
       howToUse: "Connect about research opportunities",
       priority: "Medium",
-      linkedinUrl: "https://www.linkedin.com/in/alok-mathur/"
+      linkedinUrl: "https://www.linkedin.com/in/alok-mathur/",
+      rank: 72,
+      notes: "CERN intern",
+      tags: ["Research", "CERN"]
     },
     {
       sno: 15,
@@ -216,7 +282,10 @@ const NetworkingDatabase = () => {
       category: "Needs Research",
       howToUse: "Research background before connecting",
       priority: "Low",
-      linkedinUrl: "https://www.linkedin.com/in/bindumadhavim/"
+      linkedinUrl: "https://www.linkedin.com/in/bindumadhavim/",
+      rank: 25,
+      notes: "Limited info",
+      tags: ["Research"]
     },
     {
       sno: 16,
@@ -230,7 +299,10 @@ const NetworkingDatabase = () => {
       category: "Industry Connection - Finance",
       howToUse: "Connect about finance tech opportunities",
       priority: "Medium",
-      linkedinUrl: "https://www.linkedin.com/in/sahethi-depuru-guru/"
+      linkedinUrl: "https://www.linkedin.com/in/sahethi-depuru-guru/",
+      rank: 65,
+      notes: "Finance sector",
+      tags: ["Finance", "SWE"]
     },
     {
       sno: 17,
@@ -244,7 +316,10 @@ const NetworkingDatabase = () => {
       category: "Current Student - Data Science",
       howToUse: "Connect about fintech opportunities",
       priority: "Medium",
-      linkedinUrl: "https://www.linkedin.com/in/ritayanpatra/"
+      linkedinUrl: "https://www.linkedin.com/in/ritayanpatra/",
+      rank: 66,
+      notes: "Fintech",
+      tags: ["Fintech", "Data Science"]
     },
     {
       sno: 18,
@@ -258,7 +333,10 @@ const NetworkingDatabase = () => {
       category: "Current Student with Big Tech Experience",
       howToUse: "Connect about AI/CV coursework",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/anushkaagarwal24/"
+      linkedinUrl: "https://www.linkedin.com/in/anushkaagarwal24/",
+      rank: 89,
+      notes: "AI & CV",
+      tags: ["AI", "CV", "Intel"]
     },
     {
       sno: 19,
@@ -272,7 +350,10 @@ const NetworkingDatabase = () => {
       category: "Current Student with Big Tech Experience",
       howToUse: "Connect about data engineering vs data science roles",
       priority: "Medium",
-      linkedinUrl: "https://www.linkedin.com/in/mittal-sejal/"
+      linkedinUrl: "https://www.linkedin.com/in/mittal-sejal/",
+      rank: 78,
+      notes: "Data Eng",
+      tags: ["Data Eng", "Amazon", "Ericsson"]
     },
     {
       sno: 20,
@@ -286,17 +367,51 @@ const NetworkingDatabase = () => {
       category: "Current Student with ML Focus",
       howToUse: "Connect about ML curriculum",
       priority: "High",
-      linkedinUrl: "https://www.linkedin.com/in/rashmi-chelliah/"
+      linkedinUrl: "https://www.linkedin.com/in/rashmi-chelliah/",
+      rank: 87,
+      notes: "ML Engineer",
+      tags: ["ML", "Engineer"]
     }
   ].map(contact => ({
     ...contact,
     rank: contact.rank || 50,
-    notes: contact.notes || ''
+    notes: contact.notes || '',
+    tags: contact.tags || []
   })));
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState(null);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
+  const [priorityFilter, setPriorityFilter] = useState<string>("All");
+
+  // Extract unique categories for filter dropdown
+  const uniqueCategories = ["All", ...Array.from(new Set(contacts.map(c => c.category)))];
+  
+  // Get unique tags across all contacts
+  const allTags = Array.from(new Set(contacts.flatMap(contact => contact.tags || [])));
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { 
+      y: 0, 
+      opacity: 1,
+      transition: { type: "spring", stiffness: 100 }
+    }
+  };
 
   const downloadExcel = () => {
     try {
@@ -314,7 +429,7 @@ const NetworkingDatabase = () => {
     }
   };
 
-  const handleEdit = (contact: any) => {
+  const handleEdit = (contact: Contact) => {
     setEditingContact(contact);
     setDialogMode('edit');
     setIsDialogOpen(true);
@@ -332,7 +447,7 @@ const NetworkingDatabase = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSaveContact = (contact: any) => {
+  const handleSaveContact = (contact: Contact) => {
     if (dialogMode === 'create') {
       setContacts([...contacts, contact]);
       toast.success("New contact added successfully!");
@@ -369,146 +484,326 @@ const NetworkingDatabase = () => {
     }
   };
 
-  const sortedContacts = [...contacts].sort((a, b) => {
+  const handleAddTag = (contactId: number, tag: string) => {
+    if (!tag.trim()) return;
+    
+    setContacts(prevContacts => 
+      prevContacts.map(contact => {
+        if (contact.sno === contactId) {
+          const currentTags = contact.tags || [];
+          if (!currentTags.includes(tag)) {
+            return {
+              ...contact,
+              tags: [...currentTags, tag]
+            };
+          }
+        }
+        return contact;
+      })
+    );
+  };
+
+  const handleRemoveTag = (contactId: number, tagToRemove: string) => {
+    setContacts(prevContacts => 
+      prevContacts.map(contact => {
+        if (contact.sno === contactId && contact.tags) {
+          return {
+            ...contact,
+            tags: contact.tags.filter(tag => tag !== tagToRemove)
+          };
+        }
+        return contact;
+      })
+    );
+  };
+
+  // Filter contacts based on search query and filters
+  const filteredContacts = contacts.filter(contact => {
+    const matchesSearch = 
+      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.columbia.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.notes.toLowerCase().includes(searchQuery.toLowerCase());
+      
+    const matchesCategory = categoryFilter === "All" || contact.category === categoryFilter;
+    const matchesPriority = priorityFilter === "All" || contact.priority === priorityFilter;
+    
+    return matchesSearch && matchesCategory && matchesPriority;
+  });
+
+  // Sort filtered contacts
+  const sortedContacts = [...filteredContacts].sort((a, b) => {
     // First sort by rank (descending)
     const rankDiff = b.rank - a.rank;
     if (rankDiff !== 0) return rankDiff;
     
     // Then by priority if ranks are equal
     const priorityOrder = { "High": 1, "Medium": 2, "Low": 3 };
-    return priorityOrder[a.priority] - priorityOrder[b.priority];
+    return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
   });
 
   return (
-    <div className="container mx-auto py-8 px-4 min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
-      <div className="flex flex-col items-center mb-8 animate-fade-in">
-        <h1 className="text-4xl font-bold mb-4 text-purple-800 tracking-tight">
+    <div className="container mx-auto py-8 px-4 min-h-screen bg-gradient-to-br from-purple-100 via-white to-purple-50">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col items-center mb-8"
+      >
+        <h1 className="text-4xl font-bold mb-4 text-purple-800 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-800 to-pink-600">
           Columbia Networking Database
         </h1>
         <p className="text-lg text-purple-600 mb-6 text-center max-w-2xl">
           A comprehensive database of valuable connections for Columbia University students.
         </p>
-        <div className="flex gap-4 mb-8">
-          <Button
-            onClick={downloadExcel}
-            className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 transform hover:scale-105 transition-all"
+        <div className="flex flex-wrap gap-4 mb-8 justify-center">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <Download className="w-5 h-5" />
-            Download Excel
-          </Button>
-          <Button
-            onClick={handleCreateNew}
-            className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 transform hover:scale-105 transition-all"
+            <Button
+              onClick={downloadExcel}
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center gap-2 shadow-lg"
+            >
+              <Download className="w-5 h-5" />
+              Download Excel
+            </Button>
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <Plus className="w-5 h-5" />
-            Add New Contact
-          </Button>
+            <Button
+              onClick={handleCreateNew}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white flex items-center gap-2 shadow-lg"
+            >
+              <Plus className="w-5 h-5" />
+              Add New Contact
+            </Button>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="overflow-x-auto rounded-lg shadow-xl animate-fade-in">
-        <table className="min-w-full bg-white">
-          <thead className="bg-purple-100">
-            <tr>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">
-                <div className="flex items-center gap-2">
-                  No.
-                  <ArrowUpDown className="w-4 h-4" />
-                </div>
-              </th>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Name</th>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Company</th>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Columbia</th>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Category</th>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Priority</th>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Contact</th>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Rank</th>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Notes</th>
-              <th className="px-6 py-4 text-left text-purple-800 font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-purple-200">
-            {sortedContacts.map((contact) => (
-              <tr
-                key={contact.sno}
-                className="hover:bg-purple-50 transition-colors"
+      <div className="bg-white p-6 rounded-xl shadow-xl mb-8">
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search contacts by name, company, or notes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 border-purple-200 focus-visible:ring-purple-500"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by category" />
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Priorities</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'outline'}
+              onClick={() => setViewMode('table')}
+              className="flex items-center gap-2"
+            >
+              <ArrowUpDown className="w-4 h-4" />
+              Table
+            </Button>
+            <Button
+              variant={viewMode === 'cards' ? 'default' : 'outline'}
+              onClick={() => setViewMode('cards')}
+              className="flex items-center gap-2"
+            >
+              <Tags className="w-4 h-4" />
+              Cards
+            </Button>
+          </div>
+        </div>
+
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="w-full flex justify-start mb-4 bg-purple-50">
+            <TabsTrigger value="all" className="flex-1">All Contacts ({sortedContacts.length})</TabsTrigger>
+            <TabsTrigger value="high" className="flex-1">High Priority ({sortedContacts.filter(c => c.priority === 'High').length})</TabsTrigger>
+            <TabsTrigger value="recent" className="flex-1">Recently Added (5)</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all">
+            {viewMode === 'table' ? (
+              <div className="overflow-x-auto rounded-lg shadow-lg animate-fade-in">
+                <table className="min-w-full bg-white">
+                  <thead className="bg-gradient-to-r from-purple-100 to-violet-100">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">
+                        <div className="flex items-center gap-2">
+                          No.
+                          <ArrowUpDown className="w-4 h-4" />
+                        </div>
+                      </th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Name</th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Company</th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Columbia</th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Category</th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Priority</th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Contact</th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Rank</th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Notes</th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Tags</th>
+                      <th className="px-6 py-4 text-left text-purple-800 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-purple-200">
+                    {sortedContacts.map((contact) => (
+                      <motion.tr
+                        key={contact.sno}
+                        className="hover:bg-purple-50 transition-colors"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <td className="px-6 py-4">{contact.sno}</td>
+                        <td className="px-6 py-4 font-medium flex items-center gap-2">
+                          {contact.name}
+                          {contact.linkedinUrl && (
+                            <motion.a
+                              whileHover={{ scale: 1.2, rotate: 5 }}
+                              href={contact.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[#0077b5] hover:text-[#006097] transition-colors"
+                            >
+                              <LinkedinIcon className="w-4 h-4" />
+                            </motion.a>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">{contact.company}</td>
+                        <td className="px-6 py-4">{contact.columbia}</td>
+                        <td className="px-6 py-4">{contact.category}</td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                              contact.priority === "High"
+                                ? "bg-green-100 text-green-800"
+                                : contact.priority === "Medium"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {contact.priority}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">{contact.contact}</td>
+                        <td className="px-6 py-4">{contact.rank}</td>
+                        <td className="px-6 py-4">
+                          {contact.notes ? (
+                            <div className="max-w-xs overflow-hidden text-ellipsis">
+                              {contact.notes}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">No notes</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {contact.tags?.map(tag => (
+                              <span key={tag} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <motion.div whileHover={{ scale: 1.1 }}>
+                              <Button
+                                onClick={() => handleEdit(contact)}
+                                variant="outline"
+                                size="sm"
+                                className="hover:bg-purple-50"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </motion.div>
+                            <motion.div whileHover={{ scale: 1.1 }}>
+                              <Button
+                                onClick={() => handleDelete(contact.sno)}
+                                variant="outline"
+                                size="sm"
+                                className="hover:bg-red-50 text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </motion.div>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <motion.div 
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
-                <td className="px-6 py-4">{contact.sno}</td>
-                <td className="px-6 py-4 font-medium flex items-center gap-2">
-                  {contact.name}
-                  {contact.linkedinUrl && (
-                    <a
-                      href={contact.linkedinUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#0077b5] hover:text-[#006097] transition-colors"
-                    >
-                      <LinkedinIcon className="w-4 h-4" />
-                    </a>
-                  )}
-                </td>
-                <td className="px-6 py-4">{contact.company}</td>
-                <td className="px-6 py-4">{contact.columbia}</td>
-                <td className="px-6 py-4">{contact.category}</td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`inline-block px-2 py-1 rounded text-xs font-bold ${
-                      contact.priority === "High"
-                        ? "bg-green-100 text-green-800"
-                        : contact.priority === "Medium"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {contact.priority}
-                  </span>
-                </td>
-                <td className="px-6 py-4">{contact.contact}</td>
-                <td className="px-6 py-4">{contact.rank}</td>
-                <td className="px-6 py-4">
-                  {contact.notes ? (
-                    <div className="max-w-xs overflow-hidden text-ellipsis">
-                      {contact.notes}
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">No notes</span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleEdit(contact)}
-                      variant="outline"
-                      size="sm"
-                      className="hover:bg-purple-50"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      onClick={() => handleDelete(contact.sno)}
-                      variant="outline"
-                      size="sm"
-                      className="hover:bg-red-50 text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <ContactDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSave={handleSaveContact}
-        initialData={editingContact}
-        mode={dialogMode}
-      />
-    </div>
-  );
-};
-
-export default NetworkingDatabase;
+                {sortedContacts.map((contact) => (
+                  <ContactCard 
+                    key={contact.sno} 
+                    contact={contact} 
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onAddTag={handleAddTag}
+                    onRemoveTag={handleRemoveTag}
+                    allTags={allTags}
+                    variants={itemVariants}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="high">
+            <motion.div 
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className={viewMode === 'cards' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : ""}
+            >
+              {viewMode === 'cards' ? (
+                sortedContacts.filter(c => c.priority === 'High').map((contact) => (
+                  <ContactCard 
+                    key={contact.sno} 
+                    contact={contact} 
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onAddTag={handleAddTag}
+                    onRemoveTag={handleRemoveTag}
+                    allTags={allTags}
+                    variants={itemVariants}
+                  />
+                ))
+              ) : (
+                <div className="overflow-x-
