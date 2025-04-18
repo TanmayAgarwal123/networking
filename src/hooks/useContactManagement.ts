@@ -1,68 +1,78 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { Contact } from '@/types/contact';
 import { getContacts, saveContacts } from '@/services/contactService';
 
 const STORAGE_KEY = 'columbia_networking_contacts';
-const defaultContacts: Contact[] = []; // We'll import default contacts from a separate file
 
 export const useContactManagement = (initialContacts: Contact[]) => {
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>(initialContacts || []);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [priorityFilter, setPriorityFilter] = useState<string>("All");
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('syncing');
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
 
   // Load contacts on component mount
   useEffect(() => {
     const loadContacts = async () => {
       setIsLoading(true);
       try {
+        // Try to get contacts from Firebase
         const firebaseContacts = await getContacts();
         
         if (firebaseContacts && firebaseContacts.length > 0) {
-          // We found contacts in Firebase, use those
+          // Firebase contacts found
           setContacts(firebaseContacts);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(firebaseContacts)); // Keep local copy
+          setSyncStatus('synced');
         } else {
-          // No contacts in Firebase yet, try local storage first
+          // No Firebase contacts, try local storage
           const localContacts = localStorage.getItem(STORAGE_KEY);
           if (localContacts) {
             try {
               const parsedContacts = JSON.parse(localContacts);
               setContacts(parsedContacts);
-              // Save local contacts to Firebase for future syncing
+              // Try to save local contacts to Firebase
               await saveContacts(parsedContacts);
-              toast.success("Contacts loaded from local storage and synced to cloud");
+              setSyncStatus('synced');
             } catch (error) {
               console.error("Error parsing stored contacts:", error);
               setContacts(initialContacts);
-              // Save default contacts to Firebase
+              // Try to save default contacts to Firebase
               await saveContacts(initialContacts);
             }
           } else {
             // No local storage either, use defaults
             setContacts(initialContacts);
-            // Save default contacts to Firebase
+            // Try to save default contacts to Firebase
             await saveContacts(initialContacts);
+            setSyncStatus('synced');
           }
         }
-        setSyncStatus('synced');
       } catch (error) {
         console.error("Error loading contacts:", error);
-        toast.error("Failed to sync with cloud. Using local data.");
         
-        // Fallback to local storage if Firebase fails
+        // Increase connection attempts counter
+        setConnectionAttempts(prev => prev + 1);
+        
+        // Firebase connection failed, use local storage as fallback
         const localContacts = localStorage.getItem(STORAGE_KEY);
         if (localContacts) {
           try {
-            setContacts(JSON.parse(localContacts));
-          } catch (error) {
+            const parsed = JSON.parse(localContacts);
+            setContacts(parsed);
+            toast.error("Using local contacts - Cloud sync unavailable");
+          } catch (e) {
             setContacts(initialContacts);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(initialContacts));
+            toast.error("Using default contacts - Cloud sync unavailable");
           }
         } else {
           setContacts(initialContacts);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(initialContacts));
+          toast.error("Using default contacts - Cloud sync unavailable");
         }
         
         setSyncStatus('error');
@@ -74,29 +84,32 @@ export const useContactManagement = (initialContacts: Contact[]) => {
     loadContacts();
   }, [initialContacts]);
 
-  // Save contacts to Firebase whenever they change
+  // Save contacts to localStorage whenever they change
   useEffect(() => {
     if (contacts.length > 0 && !isLoading) {
-      const syncToFirebase = async () => {
-        try {
-          setSyncStatus('syncing');
-          await saveContacts(contacts);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts)); // Keep local copy too
-          setSyncStatus('synced');
-        } catch (error) {
-          console.error("Error syncing contacts to Firebase:", error);
-          // Still save to local storage as fallback
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
-          setSyncStatus('error');
-          toast.error("Failed to sync with cloud. Changes saved locally.");
-        }
-      };
+      // Always save to local storage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
       
-      syncToFirebase();
+      // If we're not in error state, try to sync with Firebase
+      if (syncStatus !== 'error') {
+        const syncToFirebase = async () => {
+          try {
+            setSyncStatus('syncing');
+            await saveContacts(contacts);
+            setSyncStatus('synced');
+          } catch (error) {
+            console.error("Error syncing contacts to Firebase:", error);
+            setSyncStatus('error');
+            toast.error("Failed to sync with cloud. Changes saved locally.");
+          }
+        };
+        
+        syncToFirebase();
+      }
     }
   }, [contacts, isLoading]);
 
-  // Update contact numbers whenever the number of contacts changes
+  // Update contact numbers whenever contacts array changes
   useEffect(() => {
     if (contacts.length > 0) {
       updateContactNumbers();
@@ -256,5 +269,6 @@ export const useContactManagement = (initialContacts: Contact[]) => {
     sortedContacts,
     uniqueCategories,
     allTags,
+    connectionAttempts
   };
 };

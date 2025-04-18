@@ -3,6 +3,7 @@ import React from 'react';
 import { motion } from "framer-motion";
 import { Contact } from "@/types/contact";
 import ContactCard from '@/components/ContactCard';
+import { FileQuestion } from 'lucide-react';
 
 interface ContactsCardViewProps {
   contacts: Contact[];
@@ -25,6 +26,19 @@ const ContactsCardView: React.FC<ContactsCardViewProps> = ({
   containerVariants,
   itemVariants
 }) => {
+  // Handle empty contacts array
+  if (!contacts || contacts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+        <FileQuestion className="w-16 h-16 text-purple-400 mb-4" />
+        <h3 className="text-xl font-semibold text-purple-800 mb-2">No contacts found</h3>
+        <p className="text-gray-600 max-w-md">
+          No contacts match your current filters or you haven't added any contacts yet.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       variants={containerVariants}

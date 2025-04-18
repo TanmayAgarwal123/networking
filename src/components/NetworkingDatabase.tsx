@@ -1,12 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 import ContactDialog from './ContactDialog';
 import { defaultContacts } from '@/data/defaultContacts';
 import { useContactManagement } from '@/hooks/useContactManagement';
 import { Contact } from '@/types/contact';
 
-// Import the new components
+// Import the components
 import ContactsHeader from './networking/ContactsHeader';
 import ContactsFilter from './networking/ContactsFilter';
 import ContactsTable from './networking/ContactsTable';
@@ -37,6 +39,7 @@ const NetworkingDatabase = () => {
     sortedContacts,
     uniqueCategories,
     allTags,
+    connectionAttempts
   } = useContactManagement(defaultContacts);
 
   const containerVariants = {
@@ -70,7 +73,7 @@ const NetworkingDatabase = () => {
     setIsDialogOpen(true);
   };
 
-  if (isLoading) {
+  if (isLoading && connectionAttempts < 2) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -83,6 +86,15 @@ const NetworkingDatabase = () => {
 
   return (
     <div className="container mx-auto py-8 px-4 min-h-screen bg-gradient-to-br from-purple-100 via-white to-purple-50">
+      {syncStatus === 'error' && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Could not connect to the cloud database. Your changes will be saved locally on this device only.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <ContactsHeader 
         contacts={contacts}
         syncStatus={syncStatus}
