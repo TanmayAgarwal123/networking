@@ -1,22 +1,12 @@
-
-import React from 'react';
-import NetworkingDatabase from '../components/NetworkingDatabase';
-import { Button } from "@/components/ui/button";
-import { Link } from 'react-router-dom';
-import { LogIn } from 'lucide-react';
+// Update this page (the content is just a fallback if you fail to update the page)
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-100">
-      <div className="container mx-auto px-4 py-4 flex justify-end">
-        <Link to="/auth">
-          <Button variant="ghost" className="flex items-center gap-2 text-purple-600 hover:text-purple-800">
-            <LogIn className="w-4 h-4" />
-            Sign In
-          </Button>
-        </Link>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
+        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
       </div>
-      <NetworkingDatabase />
     </div>
   );
 };
