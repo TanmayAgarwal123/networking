@@ -1,6 +1,6 @@
 
 import { initializeApp } from 'firebase/app';
-import { getDatabase } from 'firebase/database';
+import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
 
 // Your web app's Firebase configuration
 // This is a free Firebase configuration with limited quota that will work cross-device
@@ -17,5 +17,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+
+// Add connection state debugging
+console.info("Firebase initialized with config:", firebaseConfig);
+console.info("Database connection initialized");
 
 export { database };

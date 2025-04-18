@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import * as XLSX from 'xlsx';
@@ -10,7 +11,7 @@ import ContactCard from './ContactCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { database } from '../firebase/config';
-import { ref, onValue, set, remove } from 'firebase/database';
+import { ref, onValue, set, remove, onDisconnect, serverTimestamp, update } from 'firebase/database';
 
 interface Contact {
   sno: number;
@@ -53,6 +54,8 @@ const defaultContacts: Contact[] = [
 
 const STORAGE_KEY = 'columbia_networking_contacts';
 const FIREBASE_PATH = 'contacts';
+const CONNECTION_STATUS_PATH = '.info/connected';
+const LAST_ONLINE_PATH = 'user_status';
 
 const NetworkingDatabase = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -65,7 +68,15 @@ const NetworkingDatabase = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [priorityFilter, setPriorityFilter] = useState<string>("All");
   const [isFirebaseConnected, setIsFirebaseConnected] = useState(false);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const userId = useRef<string>(localStorage.getItem('network_user_id') || `user_${Math.random().toString(36).substr(2, 9)}`);
+  
+  // Save user ID for consistency across sessions
+  useEffect(() => {
+    localStorage.setItem('network_user_id', userId.current);
+  }, []);
 
   const uniqueCategories = ["All", ...Array.from(new Set(contacts.map(c => c.category)))];
   
@@ -92,18 +103,52 @@ const NetworkingDatabase = () => {
 
   useEffect(() => {
     setIsLoading(true);
+    setConnectionAttempts(prev => prev + 1);
+    console.log(`Attempting Firebase connection (attempt ${connectionAttempts + 1})...`);
     
     try {
-      console.info("Firebase initialized successfully");
-      const contactsRef = ref(database, FIREBASE_PATH);
+      // Monitor connection state to Firebase
+      const connectedRef = ref(database, CONNECTION_STATUS_PATH);
+      const userStatusRef = ref(database, `${LAST_ONLINE_PATH}/${userId.current}`);
+      
+      const handleConnectionStatus = onValue(connectedRef, (snapshot) => {
+        const connected = snapshot.val() === true;
+        console.log(`Firebase connection status: ${connected ? 'connected' : 'disconnected'}`);
+        
+        if (connected) {
+          setConnectionStatus('connected');
+          
+          // When disconnect happens, update the last_online timestamp
+          onDisconnect(userStatusRef).update({
+            last_online: serverTimestamp()
+          });
+          
+          // Update user status to online
+          update(userStatusRef, {
+            status: 'online',
+            last_seen: serverTimestamp()
+          });
+        } else {
+          setConnectionStatus('disconnected');
+        }
+      }, (error) => {
+        console.error("Firebase connection monitoring error:", error);
+        setConnectionStatus('error');
+      });
       
       loadingTimeoutRef.current = setTimeout(() => {
         if (isLoading) {
-          console.info("Loading timeout reached, using local data");
+          console.warn("Loading timeout reached, using local data");
+          setConnectionStatus('error');
           const savedContacts = localStorage.getItem(STORAGE_KEY);
           if (savedContacts) {
             try {
-              setContacts(JSON.parse(savedContacts));
+              const parsedContacts = JSON.parse(savedContacts);
+              setContacts(parsedContacts);
+              toast.warning("Could not connect to cloud storage. Using local data instead.", {
+                duration: 6000,
+                description: "Your changes will be saved locally but won't sync across devices."
+              });
             } catch (error) {
               console.error("Error parsing stored contacts:", error);
               setContacts(defaultContacts.map(contact => ({
@@ -123,7 +168,10 @@ const NetworkingDatabase = () => {
           }
           setIsLoading(false);
         }
-      }, 8000);
+      }, 8000); // Reduced timeout for faster fallback
+      
+      const contactsRef = ref(database, FIREBASE_PATH);
+      console.log("Setting up Firebase data listener...");
       
       const unsubscribe = onValue(contactsRef, (snapshot) => {
         if (loadingTimeoutRef.current) {
@@ -131,18 +179,24 @@ const NetworkingDatabase = () => {
           loadingTimeoutRef.current = null;
         }
         
+        console.log("Firebase data received:", snapshot.exists());
         setIsFirebaseConnected(true);
+        setConnectionStatus('connected');
         const data = snapshot.val();
         
         if (data) {
           setContacts(data);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          console.log("Data loaded from Firebase and saved to localStorage");
         } else {
+          console.log("No data in Firebase, checking localStorage");
           const savedContacts = localStorage.getItem(STORAGE_KEY);
           let initialContacts;
           
           if (savedContacts) {
             try {
               initialContacts = JSON.parse(savedContacts);
+              console.log("Using contacts from localStorage");
             } catch (error) {
               console.error("Error parsing stored contacts:", error);
               initialContacts = defaultContacts.map(contact => ({
@@ -153,6 +207,7 @@ const NetworkingDatabase = () => {
               }));
             }
           } else {
+            console.log("No data in localStorage, using default contacts");
             initialContacts = defaultContacts.map(contact => ({
               ...contact,
               rank: contact.rank || 50,
@@ -161,14 +216,27 @@ const NetworkingDatabase = () => {
             }));
           }
           
-          set(contactsRef, initialContacts);
-          setContacts(initialContacts);
+          console.log("Setting initial data to Firebase");
+          set(contactsRef, initialContacts)
+            .then(() => {
+              console.log("Successfully initialized Firebase with data");
+              setContacts(initialContacts);
+            })
+            .catch(error => {
+              console.error("Failed to initialize Firebase:", error);
+              setContacts(initialContacts);
+              toast.error("Failed to upload data to cloud storage", {
+                description: "Your changes will be saved locally only."
+              });
+            });
         }
         
         setIsLoading(false);
       }, (error) => {
-        console.error("Firebase error:", error);
-        toast.error("Could not connect to cloud storage. Using local data instead.");
+        console.error("Firebase data error:", error);
+        toast.error("Could not connect to cloud storage. Using local data instead.", {
+          description: "Your changes will be saved locally but won't sync across devices."
+        });
         
         const savedContacts = localStorage.getItem(STORAGE_KEY);
         if (savedContacts) {
@@ -199,11 +267,13 @@ const NetworkingDatabase = () => {
         if (loadingTimeoutRef.current) {
           clearTimeout(loadingTimeoutRef.current);
         }
+        handleConnectionStatus();
         unsubscribe();
       };
     } catch (error) {
       console.error("Firebase initialization error:", error);
       toast.error("Could not initialize cloud storage. Using local data instead.");
+      setConnectionStatus('error');
       
       const savedContacts = localStorage.getItem(STORAGE_KEY);
       if (savedContacts) {
@@ -228,13 +298,18 @@ const NetworkingDatabase = () => {
       }
       
       setIsLoading(false);
+      return () => {};
     }
   }, []);
 
   useEffect(() => {
     if (!isLoading && isFirebaseConnected && contacts.length > 0) {
+      console.log("Attempting to save data to Firebase...");
       const contactsRef = ref(database, FIREBASE_PATH);
       set(contactsRef, contacts)
+        .then(() => {
+          console.log("Successfully saved to Firebase");
+        })
         .catch(error => {
           console.error("Error saving to Firebase:", error);
           toast.error("Failed to sync with cloud storage. Changes may not persist across devices.");
@@ -418,12 +493,27 @@ const NetworkingDatabase = () => {
               ✓ Cloud sync enabled - your data will be available on all devices
             </span>
           )}
+          {connectionStatus === 'error' && (
+            <span className="block text-sm text-orange-600 mt-1">
+              ⚠️ Using local storage - changes won't sync across devices
+            </span>
+          )}
+          {connectionStatus === 'connecting' && (
+            <span className="block text-sm text-blue-600 mt-1">
+              Connecting to cloud storage...
+            </span>
+          )}
         </p>
         
         {isLoading ? (
           <div className="w-full flex flex-col items-center justify-center py-10">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mb-4"></div>
             <p className="text-purple-600">Loading contacts...</p>
+            {connectionAttempts > 1 && (
+              <p className="text-sm text-gray-500 mt-2">
+                Connection attempt {connectionAttempts}... {connectionAttempts > 3 ? "Trying to recover..." : ""}
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex flex-wrap gap-4 mb-8 justify-center">
