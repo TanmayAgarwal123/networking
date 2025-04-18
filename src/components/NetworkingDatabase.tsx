@@ -7,6 +7,7 @@ import ContactDialog from './ContactDialog';
 import { defaultContacts } from '@/data/defaultContacts';
 import { useContactManagement } from '@/hooks/useContactManagement';
 import { Contact } from '@/types/contact';
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Import the components
 import ContactsHeader from './networking/ContactsHeader';
@@ -73,12 +74,17 @@ const NetworkingDatabase = () => {
     setIsDialogOpen(true);
   };
 
-  if (isLoading && connectionAttempts < 2) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="spinner w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-lg text-purple-700">Loading your contacts...</p>
+          {connectionAttempts > 0 && (
+            <p className="text-sm text-gray-500 mt-2">
+              Connection attempt {connectionAttempts}... Using local data if connection fails.
+            </p>
+          )}
         </div>
       </div>
     );

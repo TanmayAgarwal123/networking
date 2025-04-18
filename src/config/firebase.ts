@@ -13,8 +13,17 @@ const firebaseConfig = {
   databaseURL: "https://columbia-networking-db-default-rtdb.firebaseio.com",
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+// Initialize Firebase with error handling
+let app;
+let db;
+
+try {
+  app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+  console.log("Firebase initialized successfully");
+} catch (error) {
+  console.error("Error initializing Firebase:", error);
+  // We'll handle the fallback in the useContactManagement hook
+}
 
 export { db };

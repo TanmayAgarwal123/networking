@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { Contact } from '@/types/contact';
 import { getContacts, saveContacts } from '@/services/contactService';
 
 const STORAGE_KEY = 'columbia_networking_contacts';
+const LOADING_TIMEOUT = 8000; // 8 seconds timeout for loading
 
 export const useContactManagement = (initialContacts: Contact[]) => {
   const [contacts, setContacts] = useState<Contact[]>(initialContacts || []);
@@ -18,6 +20,30 @@ export const useContactManagement = (initialContacts: Contact[]) => {
   useEffect(() => {
     const loadContacts = async () => {
       setIsLoading(true);
+      
+      // Set a timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        if (isLoading) {
+          console.log("Loading timeout reached, using local data");
+          const localContacts = localStorage.getItem(STORAGE_KEY);
+          if (localContacts) {
+            try {
+              const parsed = JSON.parse(localContacts);
+              setContacts(parsed);
+            } catch (e) {
+              setContacts(initialContacts);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(initialContacts));
+            }
+          } else {
+            setContacts(initialContacts);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(initialContacts));
+          }
+          setSyncStatus('error');
+          setIsLoading(false);
+          toast.error("Connection timeout - using local data");
+        }
+      }, LOADING_TIMEOUT);
+      
       try {
         // Try to get contacts from Firebase
         const firebaseContacts = await getContacts();
@@ -77,6 +103,7 @@ export const useContactManagement = (initialContacts: Contact[]) => {
         
         setSyncStatus('error');
       } finally {
+        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
