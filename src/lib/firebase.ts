@@ -17,8 +17,8 @@ const firebaseConfig = {
 let database;
 let isFirebaseInitialized = false;
 
+// Initialize Firebase
 try {
-  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   database = getDatabase(app);
   isFirebaseInitialized = true;
