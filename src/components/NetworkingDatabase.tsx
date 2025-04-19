@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from "@/components/ui/input";
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Search, Filter, ArrowUpDown, Database, CloudOff, Wifi, WifiOff } from "lucide-react";
+import { PlusCircle, Search, Filter, ArrowUpDown, Database, CloudOff, Wifi, WifiOff, RefreshCw } from "lucide-react";
 import ContactCard from './ContactCard';
 import ContactDialog from './ContactDialog';
 import { toast } from "sonner";
@@ -33,8 +32,9 @@ const NetworkingDatabase: React.FC = () => {
   const [editContact, setEditContact] = useState<Contact | null>(null);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [isDatabaseReady, setIsDatabaseReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const isOnline = useOnlineStatus();
-
+  
   // Extract all unique categories and tags
   const categories = useMemo(() => {
     const uniqueCategories = Array.from(new Set(contacts.map(contact => contact.category)));
@@ -102,14 +102,33 @@ const NetworkingDatabase: React.FC = () => {
   useEffect(() => {
     const initializeData = async () => {
       try {
+        setIsLoading(true);
         const loadedContacts = await loadContactsFromCloud();
         setContacts(loadedContacts);
         setIsDatabaseReady(true);
-        toast.success("Contacts loaded successfully");
+        if (loadedContacts.length > 0) {
+          toast.success(`${loadedContacts.length} contacts loaded successfully`);
+        } else {
+          toast.info("No contacts found. Add your first contact!");
+        }
       } catch (error) {
         console.error("Failed to initialize contacts:", error);
         toast.error("Failed to load contacts");
         setIsDatabaseReady(false);
+        
+        // Try to load from local storage as fallback
+        try {
+          const localData = localStorage.getItem('contacts');
+          if (localData) {
+            const localContacts = JSON.parse(localData);
+            setContacts(localContacts);
+            toast.warning("Using locally stored contacts");
+          }
+        } catch (e) {
+          console.error("Failed to load from local storage:", e);
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -118,31 +137,43 @@ const NetworkingDatabase: React.FC = () => {
 
   // Subscribe to realtime updates
   useEffect(() => {
-    const unsubscribe = subscribeToContacts((updatedContacts) => {
-      if (updatedContacts && Array.isArray(updatedContacts)) {
-        setContacts(updatedContacts);
-        setIsDatabaseReady(true);
-      }
-    });
+    let unsubscribe = () => {};
+    
+    // Only set up subscription if database is ready or we're online
+    if (isDatabaseReady || isOnline) {
+      unsubscribe = subscribeToContacts((updatedContacts) => {
+        if (updatedContacts && Array.isArray(updatedContacts)) {
+          setContacts(updatedContacts);
+          setIsDatabaseReady(true);
+        }
+      });
+    }
 
     return () => unsubscribe();
-  }, []);
+  }, [isDatabaseReady, isOnline]);
 
   // Save to localStorage as a fallback when offline
   useEffect(() => {
-    if (contacts.length > 0 && !isOnline) {
+    if (contacts.length > 0) {
       localStorage.setItem('contacts', JSON.stringify(contacts));
     }
-  }, [contacts, isOnline]);
+  }, [contacts]);
 
-  // Show online/offline status to user
-  useEffect(() => {
-    if (isOnline) {
-      toast.success("Connected to cloud storage");
-    } else {
-      toast.warning("Offline mode: Changes will be saved locally and synced when back online");
+  // Manual refresh function
+  const handleRefresh = async () => {
+    try {
+      setIsLoading(true);
+      const loadedContacts = await loadContactsFromCloud();
+      setContacts(loadedContacts);
+      setIsDatabaseReady(true);
+      toast.success("Contacts refreshed successfully");
+    } catch (error) {
+      console.error("Failed to refresh contacts:", error);
+      toast.error("Failed to refresh contacts");
+    } finally {
+      setIsLoading(false);
     }
-  }, [isOnline]);
+  };
 
   const handleSortChange = (key: keyof Contact) => {
     const direction = sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
@@ -251,7 +282,8 @@ const NetworkingDatabase: React.FC = () => {
       toast.error("Failed to remove tag");
     }
   };
-
+  
+  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -274,6 +306,23 @@ const NetworkingDatabase: React.FC = () => {
     }
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-16 px-4 md:px-6 flex flex-col items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="text-purple-600 mb-4"
+        >
+          <RefreshCw size={40} />
+        </motion.div>
+        <h2 className="text-xl font-medium text-gray-700 mb-2">Loading your contacts...</h2>
+        <p className="text-gray-500 text-center">Please wait while we connect to the database</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <div className="mb-8 text-center">
@@ -293,6 +342,16 @@ const NetworkingDatabase: React.FC = () => {
             {isDatabaseReady ? <Database className="w-3 h-3" /> : <CloudOff className="w-3 h-3" />}
             {isDatabaseReady ? "Database Connected" : "Database Error"}
           </Badge>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-1 h-7 px-2"
+            onClick={handleRefresh}
+          >
+            <RefreshCw className="h-3 w-3" />
+            Refresh
+          </Button>
         </div>
       </div>
       
