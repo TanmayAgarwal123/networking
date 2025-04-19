@@ -1,3 +1,4 @@
+
 import { database } from './firebase';
 import { ref, set, get, remove, update, onValue, off } from "firebase/database";
 import { toast } from "sonner";
@@ -23,24 +24,8 @@ export interface Contact {
 // Database ref path
 const CONTACTS_PATH = 'contacts';
 
-// Helper to check if database is available
-const isDatabaseAvailable = () => {
-  if (!database) {
-    console.error("Firebase database is not available");
-    toast.error("Cloud database is not available, using local storage");
-    return false;
-  }
-  return true;
-};
-
 export const saveContactsToCloud = async (contacts: Contact[]): Promise<void> => {
   try {
-    if (!isDatabaseAvailable()) {
-      // Fallback to local storage
-      localStorage.setItem('contacts', JSON.stringify(contacts));
-      return Promise.resolve();
-    }
-    
     const contactsRef = ref(database, CONTACTS_PATH);
     await set(contactsRef, contacts);
     return Promise.resolve();
@@ -55,12 +40,6 @@ export const saveContactsToCloud = async (contacts: Contact[]): Promise<void> =>
 
 export const loadContactsFromCloud = async (): Promise<Contact[]> => {
   try {
-    if (!isDatabaseAvailable()) {
-      // Try loading from local storage
-      const localContacts = localStorage.getItem('contacts');
-      return localContacts ? JSON.parse(localContacts) : [];
-    }
-
     const contactsRef = ref(database, CONTACTS_PATH);
     const snapshot = await get(contactsRef);
     if (snapshot.exists()) {
@@ -71,9 +50,7 @@ export const loadContactsFromCloud = async (): Promise<Contact[]> => {
       if (localContacts) {
         const parsedContacts = JSON.parse(localContacts);
         // Save local contacts to cloud for future syncing
-        if (isDatabaseAvailable()) {
-          await saveContactsToCloud(parsedContacts);
-        }
+        await saveContactsToCloud(parsedContacts);
         return parsedContacts;
       }
       return [];
@@ -88,61 +65,25 @@ export const loadContactsFromCloud = async (): Promise<Contact[]> => {
 };
 
 export const subscribeToContacts = (callback: (contacts: Contact[]) => void): () => void => {
-  if (!isDatabaseAvailable()) {
-    // Load from local storage and notify through callback
-    const localContacts = localStorage.getItem('contacts');
-    const contacts = localContacts ? JSON.parse(localContacts) : [];
-    setTimeout(() => callback(contacts), 0);
-    
-    // Return no-op function since we're not actually subscribing
-    return () => {};
-  }
-  
-  try {
-    const contactsRef = ref(database, CONTACTS_PATH);
-    onValue(contactsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        callback(snapshot.val() || []);
-      } else {
-        callback([]);
-      }
-    }, (error) => {
-      console.error("Error subscribing to contacts:", error);
-      toast.error("Connection lost. Changes may not sync across devices.");
-      
-      // Fallback to local storage
-      const localContacts = localStorage.getItem('contacts');
-      if (localContacts) {
-        callback(JSON.parse(localContacts));
-      }
-    });
+  const contactsRef = ref(database, CONTACTS_PATH);
+  onValue(contactsRef, (snapshot) => {
+    if (snapshot.exists()) {
+      callback(snapshot.val() || []);
+    } else {
+      callback([]);
+    }
+  }, (error) => {
+    console.error("Error subscribing to contacts:", error);
+    toast.error("Connection lost. Changes may not sync across devices.");
+    // Handle error
+  });
 
-    // Return unsubscribe function
-    return () => off(contactsRef);
-  } catch (error) {
-    console.error("Error setting up contacts subscription:", error);
-    
-    // Fallback to local storage
-    const localContacts = localStorage.getItem('contacts');
-    const contacts = localContacts ? JSON.parse(localContacts) : [];
-    setTimeout(() => callback(contacts), 0);
-    
-    // Return no-op function
-    return () => {};
-  }
+  // Return unsubscribe function
+  return () => off(contactsRef);
 };
 
 export const addContactToCloud = async (contact: Contact): Promise<void> => {
   try {
-    if (!isDatabaseAvailable()) {
-      // Fallback to local storage
-      const localContacts = localStorage.getItem('contacts');
-      const contacts = localContacts ? JSON.parse(localContacts) : [];
-      contacts.push(contact);
-      localStorage.setItem('contacts', JSON.stringify(contacts));
-      return Promise.resolve();
-    }
-    
     // First get all contacts
     const contacts = await loadContactsFromCloud();
     contacts.push(contact);
@@ -155,18 +96,6 @@ export const addContactToCloud = async (contact: Contact): Promise<void> => {
 
 export const updateContactInCloud = async (updatedContact: Contact): Promise<void> => {
   try {
-    if (!isDatabaseAvailable()) {
-      // Fallback to local storage
-      const localContacts = localStorage.getItem('contacts');
-      const contacts = localContacts ? JSON.parse(localContacts) : [];
-      const index = contacts.findIndex((c: Contact) => c.sno === updatedContact.sno);
-      if (index !== -1) {
-        contacts[index] = updatedContact;
-        localStorage.setItem('contacts', JSON.stringify(contacts));
-      }
-      return Promise.resolve();
-    }
-    
     // Get all contacts
     const contacts = await loadContactsFromCloud();
     // Find and update the specific contact
@@ -185,15 +114,6 @@ export const updateContactInCloud = async (updatedContact: Contact): Promise<voi
 
 export const deleteContactFromCloud = async (sno: number): Promise<void> => {
   try {
-    if (!isDatabaseAvailable()) {
-      // Fallback to local storage
-      const localContacts = localStorage.getItem('contacts');
-      const contacts = localContacts ? JSON.parse(localContacts) : [];
-      const updatedContacts = contacts.filter((c: Contact) => c.sno !== sno);
-      localStorage.setItem('contacts', JSON.stringify(updatedContacts));
-      return Promise.resolve();
-    }
-    
     // Get all contacts
     const contacts = await loadContactsFromCloud();
     // Filter out the deleted contact
@@ -207,23 +127,6 @@ export const deleteContactFromCloud = async (sno: number): Promise<void> => {
 
 export const addTagToContactInCloud = async (contactId: number, tag: string): Promise<void> => {
   try {
-    if (!isDatabaseAvailable()) {
-      // Fallback to local storage
-      const localContacts = localStorage.getItem('contacts');
-      const contacts = localContacts ? JSON.parse(localContacts) : [];
-      const index = contacts.findIndex((c: Contact) => c.sno === contactId);
-      if (index !== -1) {
-        if (!contacts[index].tags) {
-          contacts[index].tags = [];
-        }
-        if (!contacts[index].tags!.includes(tag)) {
-          contacts[index].tags!.push(tag);
-          localStorage.setItem('contacts', JSON.stringify(contacts));
-        }
-      }
-      return Promise.resolve();
-    }
-    
     // Get all contacts
     const contacts = await loadContactsFromCloud();
     // Find the contact
@@ -250,18 +153,6 @@ export const addTagToContactInCloud = async (contactId: number, tag: string): Pr
 
 export const removeTagFromContactInCloud = async (contactId: number, tag: string): Promise<void> => {
   try {
-    if (!isDatabaseAvailable()) {
-      // Fallback to local storage
-      const localContacts = localStorage.getItem('contacts');
-      const contacts = localContacts ? JSON.parse(localContacts) : [];
-      const index = contacts.findIndex((c: Contact) => c.sno === contactId);
-      if (index !== -1 && contacts[index].tags) {
-        contacts[index].tags = contacts[index].tags!.filter(t => t !== tag);
-        localStorage.setItem('contacts', JSON.stringify(contacts));
-      }
-      return Promise.resolve();
-    }
-    
     // Get all contacts
     const contacts = await loadContactsFromCloud();
     // Find the contact
