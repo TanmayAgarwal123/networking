@@ -1,6 +1,7 @@
 
 import { initializeApp } from "firebase/app";
-import { getDatabase } from "firebase/database";
+import { getDatabase, connectDatabaseEmulator } from "firebase/database";
+import { toast } from "sonner";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -13,8 +14,17 @@ const firebaseConfig = {
   appId: "1:634893480022:web:7de7ccad6fb93bc3b91671"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
+let database;
+
+try {
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  database = getDatabase(app);
+  console.info("Firebase initialized successfully");
+  toast.success("Connected to cloud storage");
+} catch (error) {
+  console.error("Error initializing Firebase:", error);
+  toast.error("Could not connect to cloud storage. Using local storage as fallback.");
+}
 
 export { database };
