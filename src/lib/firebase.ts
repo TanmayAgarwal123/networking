@@ -15,17 +15,16 @@ const firebaseConfig = {
 };
 
 let database;
-let isFirebaseInitialized = false;
 
-// Initialize Firebase
 try {
+  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   database = getDatabase(app);
-  isFirebaseInitialized = true;
   console.info("Firebase initialized successfully");
+  toast.success("Connected to cloud storage");
 } catch (error) {
   console.error("Error initializing Firebase:", error);
   toast.error("Could not connect to cloud storage. Using local storage as fallback.");
 }
 
-export { database, isFirebaseInitialized };
+export { database };

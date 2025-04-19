@@ -29,20 +29,18 @@ export function useOnlineStatus() {
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
         // Try to fetch a small file to verify actual internet connectivity
-        const response = await fetch('https://www.google.com/favicon.ico', {
+        await fetch('https://www.google.com/favicon.ico', {
           method: 'HEAD',
           mode: 'no-cors',
-          signal: controller.signal,
-          cache: 'no-store' // Prevent caching
+          signal: controller.signal
         });
         
         clearTimeout(timeoutId);
-        if (!isOnline && navigator.onLine) {
+        if (!isOnline) {
           setIsOnline(true);
         }
       } catch (error) {
-        // If we get an abort error or any other error and navigator says we're offline
-        if (!navigator.onLine) {
+        if (!navigator.onLine || error.name === 'AbortError') {
           setIsOnline(false);
         }
       }
