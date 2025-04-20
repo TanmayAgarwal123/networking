@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from "@/components/ui/input";
@@ -21,11 +22,7 @@ import {
 } from '../lib/contactService';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
-interface NetworkingDatabaseProps {
-  onRefresh?: () => Promise<boolean>;
-}
-
-const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) => {
+const NetworkingDatabase: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
@@ -38,6 +35,7 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
   const [isDatabaseReady, setIsDatabaseReady] = useState(false);
   const isOnline = useOnlineStatus();
 
+  // Extract all unique categories and tags
   const categories = useMemo(() => {
     const uniqueCategories = Array.from(new Set(contacts.map(contact => contact.category)));
     return ['All', ...uniqueCategories].filter(Boolean);
@@ -53,9 +51,11 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
     return Array.from(uniqueTags);
   }, [contacts]);
   
+  // Filter and sort contacts
   const filteredContacts = useMemo(() => {
     let result = [...contacts];
     
+    // Apply search filter
     if (searchTerm) {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
       result = result.filter(contact => 
@@ -66,18 +66,22 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
       );
     }
     
+    // Apply category filter
     if (filterCategory !== 'All') {
       result = result.filter(contact => contact.category === filterCategory);
     }
     
+    // Apply priority filter
     if (filterPriority !== 'All') {
       result = result.filter(contact => contact.priority === filterPriority);
     }
     
+    // Apply tag filter
     if (filterTag !== 'All') {
       result = result.filter(contact => contact.tags?.includes(filterTag));
     }
     
+    // Apply sorting
     result.sort((a, b) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
@@ -94,6 +98,7 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
     return result;
   }, [contacts, searchTerm, filterCategory, filterPriority, filterTag, sortConfig]);
 
+  // Load data from Firebase on mount
   useEffect(() => {
     const initializeData = async () => {
       try {
@@ -111,6 +116,7 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
     initializeData();
   }, []);
 
+  // Subscribe to realtime updates
   useEffect(() => {
     const unsubscribe = subscribeToContacts((updatedContacts) => {
       if (updatedContacts && Array.isArray(updatedContacts)) {
@@ -122,12 +128,14 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
     return () => unsubscribe();
   }, []);
 
+  // Save to localStorage as a fallback when offline
   useEffect(() => {
     if (contacts.length > 0 && !isOnline) {
       localStorage.setItem('contacts', JSON.stringify(contacts));
     }
   }, [contacts, isOnline]);
 
+  // Show online/offline status to user
   useEffect(() => {
     if (isOnline) {
       toast.success("Connected to cloud storage");
@@ -159,15 +167,19 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
         const maxSno = contacts.reduce((max, c) => Math.max(max, c.sno), 0);
         const newContact = { ...contact, sno: maxSno + 1 };
         
+        // Add to local state
         const updatedContacts = [...contacts, newContact];
         setContacts(updatedContacts);
         
+        // Save to cloud
         await saveContactsToCloud(updatedContacts);
         toast.success("Contact added successfully");
       } else {
+        // Update in local state
         const updatedContacts = contacts.map(c => c.sno === contact.sno ? contact : c);
         setContacts(updatedContacts);
         
+        // Update in cloud
         await updateContactInCloud(contact);
         toast.success("Contact updated successfully");
       }
@@ -175,6 +187,7 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
       console.error("Error saving contact:", error);
       toast.error("Failed to save contact");
       
+      // Fallback to local storage
       if (!isOnline) {
         localStorage.setItem('contacts', JSON.stringify(contacts));
       }
@@ -183,9 +196,11 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
 
   const handleDeleteContact = async (sno: number) => {
     try {
+      // Update local state
       const updatedContacts = contacts.filter(c => c.sno !== sno);
       setContacts(updatedContacts);
       
+      // Update cloud
       await deleteContactFromCloud(sno);
       toast.success("Contact deleted successfully");
     } catch (error) {
@@ -196,6 +211,7 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
 
   const handleAddTag = async (contactId: number, tag: string) => {
     try {
+      // Update local state first for quick feedback
       setContacts(prevContacts => 
         prevContacts.map(contact => {
           if (contact.sno === contactId) {
@@ -208,6 +224,7 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
         })
       );
       
+      // Update cloud
       await addTagToContactInCloud(contactId, tag);
     } catch (error) {
       console.error("Error adding tag:", error);
@@ -217,6 +234,7 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
 
   const handleRemoveTag = async (contactId: number, tag: string) => {
     try {
+      // Update local state first for quick feedback
       setContacts(prevContacts => 
         prevContacts.map(contact => {
           if (contact.sno === contactId && contact.tags) {
@@ -226,6 +244,7 @@ const NetworkingDatabase: React.FC<NetworkingDatabaseProps> = ({ onRefresh }) =>
         })
       );
       
+      // Update cloud
       await removeTagFromContactInCloud(contactId, tag);
     } catch (error) {
       console.error("Error removing tag:", error);

@@ -7,10 +7,9 @@ import { Button } from '@/components/ui/button';
 
 interface ConnectionStatusProps {
   onRefresh: () => void;
-  isRefreshing?: boolean; // Added the isRefreshing prop as optional
 }
 
-const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ onRefresh, isRefreshing = false }) => {
+const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ onRefresh }) => {
   const isOnline = useOnlineStatus();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -91,10 +90,10 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ onRefresh, isRefres
         variant="ghost" 
         size="sm" 
         onClick={handleRefresh} 
-        disabled={isLoading || isRefreshing}
+        disabled={isLoading}
         className="h-8 px-2"
       >
-        <RefreshCw size={16} className={`mr-1 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+        <RefreshCw size={16} className={`mr-1 ${isLoading ? 'animate-spin' : ''}`} />
         Refresh
       </Button>
     </div>

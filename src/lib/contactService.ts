@@ -1,4 +1,4 @@
-import { getFirebaseDatabase, isDatabaseAvailable } from './firebase';
+import { database } from './firebase';
 import { ref, set, get, remove, update, onValue, off } from "firebase/database";
 import { toast } from "sonner";
 
@@ -23,54 +23,33 @@ export interface Contact {
 // Database ref path
 const CONTACTS_PATH = 'contacts';
 
-// Helper function to save contacts to local storage
-const saveToLocalStorage = (contacts: Contact[]): void => {
-  try {
-    localStorage.setItem('contacts', JSON.stringify(contacts));
-    console.log("Contacts saved to local storage");
-  } catch (error) {
-    console.error("Error saving to local storage:", error);
-  }
-};
-
-// Helper function to load contacts from local storage
-const loadFromLocalStorage = (): Contact[] => {
-  try {
-    const localContacts = localStorage.getItem('contacts');
-    return localContacts ? JSON.parse(localContacts) : [];
-  } catch (error) {
-    console.error("Error loading from local storage:", error);
-    return [];
-  }
+// Helper function to check if database is available
+const isDatabaseAvailable = () => {
+  return !!database;
 };
 
 export const saveContactsToCloud = async (contacts: Contact[]): Promise<void> => {
   try {
-    const database = await getFirebaseDatabase();
-    if (!database) {
+    if (!isDatabaseAvailable()) {
       throw new Error("Firebase database not available");
     }
     
     const contactsRef = ref(database, CONTACTS_PATH);
     await set(contactsRef, contacts);
     console.log("Contacts saved to cloud successfully");
-    
-    // Also save to local storage as backup
-    saveToLocalStorage(contacts);
     return Promise.resolve();
   } catch (error) {
     console.error("Error saving contacts to cloud:", error);
     toast.error("Failed to save contacts to cloud, using local storage");
     // Fallback to local storage
-    saveToLocalStorage(contacts);
+    localStorage.setItem('contacts', JSON.stringify(contacts));
     return Promise.reject(error);
   }
 };
 
 export const loadContactsFromCloud = async (): Promise<Contact[]> => {
   try {
-    const database = await getFirebaseDatabase();
-    if (!database) {
+    if (!isDatabaseAvailable()) {
       throw new Error("Firebase database not available");
     }
     
@@ -78,117 +57,87 @@ export const loadContactsFromCloud = async (): Promise<Contact[]> => {
     const snapshot = await get(contactsRef);
     
     if (snapshot.exists()) {
-      const contacts = snapshot.val() || [];
-      console.log("Contacts loaded from cloud successfully:", contacts);
-      
-      // Save to local storage as backup
-      saveToLocalStorage(contacts);
-      return contacts;
+      console.log("Contacts loaded from cloud successfully");
+      return snapshot.val() || [];
     } else {
       console.log("No contacts found in cloud, checking local storage");
       // No contacts in the cloud, try loading from local storage as fallback
-      const localContacts = loadFromLocalStorage();
-      
-      // If we have local contacts, try to save them to the cloud
-      if (localContacts.length > 0) {
-        await saveContactsToCloud(localContacts);
+      const localContacts = localStorage.getItem('contacts');
+      if (localContacts) {
+        const parsedContacts = JSON.parse(localContacts);
+        // Save local contacts to cloud for future syncing
+        await saveContactsToCloud(parsedContacts);
+        return parsedContacts;
       }
-      
-      return localContacts;
+      return [];
     }
   } catch (error) {
     console.error("Error loading contacts from cloud:", error);
     toast.error("Failed to load contacts from cloud, using local storage");
     // Fallback to local storage
-    return loadFromLocalStorage();
+    const localContacts = localStorage.getItem('contacts');
+    return localContacts ? JSON.parse(localContacts) : [];
   }
 };
 
 export const subscribeToContacts = (callback: (contacts: Contact[]) => void): () => void => {
-  let unsubscribeFunction = () => {};
-  
-  const initSubscription = async () => {
-    const database = await getFirebaseDatabase();
-    if (!database) {
-      console.warn("Firebase database not available for subscription");
-      // Load from local storage immediately
-      const localContacts = loadFromLocalStorage();
-      callback(localContacts);
-      return;
+  if (!isDatabaseAvailable()) {
+    console.warn("Firebase database not available for subscription");
+    // Load from local storage immediately
+    const localContacts = localStorage.getItem('contacts');
+    if (localContacts) {
+      callback(JSON.parse(localContacts));
     }
-    
-    const contactsRef = ref(database, CONTACTS_PATH);
-    onValue(contactsRef, (snapshot) => {
-      console.log("Received contact update from cloud");
-      if (snapshot.exists()) {
-        const contacts = snapshot.val() || [];
-        // Save to local storage as backup
-        saveToLocalStorage(contacts);
-        callback(contacts);
-      } else {
-        // If no contacts in cloud but we have local ones, push those to cloud
-        const localContacts = loadFromLocalStorage();
-        if (localContacts.length > 0) {
-          saveContactsToCloud(localContacts).then(() => {
-            callback(localContacts);
-          });
-        } else {
-          callback([]);
-        }
-      }
-    }, (error) => {
-      console.error("Error subscribing to contacts:", error);
-      toast.error("Connection lost. Changes may not sync across devices.");
-      // Handle error - try loading from local storage
-      const localContacts = loadFromLocalStorage();
-      callback(localContacts);
-    });
-    
-    // Update unsubscribe function
-    unsubscribeFunction = () => {
-      if (database) {
-        off(contactsRef);
-      }
-    };
-  };
+    // Return dummy unsubscribe function
+    return () => {};
+  }
   
-  // Initialize subscription
-  initSubscription();
+  const contactsRef = ref(database, CONTACTS_PATH);
+  onValue(contactsRef, (snapshot) => {
+    console.log("Received contact update from cloud");
+    if (snapshot.exists()) {
+      const contacts = snapshot.val() || [];
+      // Save to local storage as backup
+      localStorage.setItem('contacts', JSON.stringify(contacts));
+      callback(contacts);
+    } else {
+      callback([]);
+    }
+  }, (error) => {
+    console.error("Error subscribing to contacts:", error);
+    toast.error("Connection lost. Changes may not sync across devices.");
+    // Handle error - try loading from local storage
+    const localContacts = localStorage.getItem('contacts');
+    if (localContacts) {
+      callback(JSON.parse(localContacts));
+    }
+  });
 
   // Return unsubscribe function
-  return () => unsubscribeFunction();
+  return () => {
+    if (isDatabaseAvailable()) {
+      off(contactsRef);
+    }
+  };
 };
 
 export const addContactToCloud = async (contact: Contact): Promise<void> => {
   try {
+    if (!isDatabaseAvailable()) {
+      throw new Error("Firebase database not available");
+    }
+    
     // First get all contacts
     const contacts = await loadContactsFromCloud();
-    
-    // Ensure sno is unique by finding the max sno and adding 1
-    const maxSno = contacts.reduce((max, c) => Math.max(max, c.sno), 0);
-    const updatedContact = { ...contact, sno: maxSno + 1 };
-    
-    // Add to local array
-    contacts.push(updatedContact);
-    
-    // Save to cloud and local storage
-    await saveContactsToCloud(contacts);
-    console.log("Contact added successfully:", updatedContact);
-    return Promise.resolve();
+    contacts.push(contact);
+    return saveContactsToCloud(contacts);
   } catch (error) {
     console.error("Error adding contact to cloud:", error);
-    
     // Fallback to local storage
-    const localContacts = loadFromLocalStorage();
-    
-    // Ensure sno is unique
-    const maxSno = localContacts.reduce((max, c) => Math.max(max, c.sno), 0);
-    const updatedContact = { ...contact, sno: maxSno + 1 };
-    
-    // Add to local array and save
-    localContacts.push(updatedContact);
-    saveToLocalStorage(localContacts);
-    
+    const localContacts = localStorage.getItem('contacts');
+    const contacts = localContacts ? JSON.parse(localContacts) : [];
+    contacts.push(contact);
+    localStorage.setItem('contacts', JSON.stringify(contacts));
     return Promise.reject(error);
   }
 };
