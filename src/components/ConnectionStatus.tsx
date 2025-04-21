@@ -4,6 +4,7 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { toast } from 'sonner';
 import { Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { testDatabaseConnection } from '@/lib/firebase';
 
 interface ConnectionStatusProps {
   onRefresh: () => void;
@@ -23,18 +24,8 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ onRefresh }) => {
       }
       
       try {
-        // Try to fetch a small test value from Firebase
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        // Using Google's favicon as a test since we can't directly ping Firebase
-        await fetch('https://firebasestorage.googleapis.com/v0/b/networking-contacts-db.appspot.com/o', {
-          method: 'HEAD',
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        setIsConnected(true);
+        const result = await testDatabaseConnection();
+        setIsConnected(result);
       } catch (error) {
         setIsConnected(false);
         console.warn("Firebase connection test failed:", error);
@@ -54,7 +45,13 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ onRefresh }) => {
     
     try {
       await onRefresh();
-      toast.success("Data refreshed successfully");
+      const connectionResult = await testDatabaseConnection();
+      setIsConnected(connectionResult);
+      if (connectionResult) {
+        toast.success("Data refreshed successfully");
+      } else {
+        toast.warning("Working offline, using local data");
+      }
     } catch (error) {
       toast.error("Failed to refresh data");
       console.error("Refresh error:", error);

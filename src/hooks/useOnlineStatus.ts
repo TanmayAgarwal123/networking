@@ -32,6 +32,7 @@ export function useOnlineStatus() {
         await fetch('https://www.google.com/favicon.ico', {
           method: 'HEAD',
           mode: 'no-cors',
+          cache: 'no-store',
           signal: controller.signal
         });
         
@@ -40,7 +41,7 @@ export function useOnlineStatus() {
           setIsOnline(true);
         }
       } catch (error) {
-        if (!navigator.onLine || error.name === 'AbortError') {
+        if (error.name === 'AbortError' || !navigator.onLine) {
           setIsOnline(false);
         }
       }

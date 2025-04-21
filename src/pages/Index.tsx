@@ -2,17 +2,30 @@
 import React, { useState, useEffect } from 'react';
 import NetworkingDatabase from '../components/NetworkingDatabase';
 import ConnectionStatus from '@/components/ConnectionStatus';
-import { loadContactsFromCloud } from '@/lib/contactService';
+import { loadContactsFromCloud, subscribeToContacts } from '@/lib/contactService';
+import { testDatabaseConnection } from '@/lib/firebase';
 
 const Index = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(Date.now());
+
+  useEffect(() => {
+    // Initial connection test when component mounts
+    const initialSetup = async () => {
+      await testDatabaseConnection();
+      setIsLoading(false);
+    };
+    
+    initialSetup();
+  }, []);
 
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
       // Force reload of contacts from cloud
       await loadContactsFromCloud();
-      // The actual refresh will happen through the NetworkingDatabase component's subscription
+      // Force re-render of NetworkingDatabase component
+      setRefreshKey(Date.now());
     } catch (error) {
       console.error("Error refreshing data:", error);
     } finally {
@@ -26,7 +39,7 @@ const Index = () => {
       <div className="container mx-auto px-4 py-4 md:py-8">
         <ConnectionStatus onRefresh={handleRefresh} />
         <div className="mt-4">
-          <NetworkingDatabase />
+          <NetworkingDatabase key={refreshKey} />
         </div>
       </div>
     </div>
